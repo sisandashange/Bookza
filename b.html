@@ -1,38 +1,59 @@
 <!DOCTYPE html>
-<html><head><meta name="viewport" content="width=device-width,initial-scale=1">
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>BookZA</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>body{font-family:sans-serif;background:#f1f5f9;margin:0;padding:12px}.card{background:white;padding:16px;border-radius:14px;margin-bottom:12px}.service{border:2px solid #e2e8f0;padding:12px;border-radius:10px;margin:8px 0;cursor:pointer;display:flex;justify-content:space-between;align-items:center}.service.selected{border-color:#0f172a;background:#f8fafc}button{background:#0f172a;color:white;padding:16px;border:none;border-radius:12px;width:100%;font-weight:bold;font-size:16px}input,select{width:100%;padding:14px;margin:8px 0;border:1px solid #ddd;border-radius:10px;box-sizing:border-box}.qty{display:flex;gap:8px;align-items:center}.qty button{width:35px;padding:8px}</style>
-</head><body>
-<div id="load" class="card">Loading... ⏳</div><div id="app" style="display:none">
-<div class="card"><h1 id="bizName"></h1><p id="bizMeta"></p></div>
-<div class="card"><h3 id="secTitle"></h3><div id="services"></div></div>
-<div class="card"><h3>Your Details</h3><input id="custName" placeholder="Your Name"><input id="custPhone" placeholder="WhatsApp Number"><div id="timeBox"></div>
-<div id="cart" style="margin:12px 0;font-weight:bold"></div>
-<button id="bookBtn" onclick="makeBooking()">Book Now</button></div></div>
+<style>
+*{box-sizing:border-box;font-family:Inter,sans-serif}body{margin:0;background:#f8fafc}
+.top{height:220px;background:#000;position:relative}.top img{width:100%;height:100%;object-fit:cover;opacity:.8}
+.top h1{position:absolute;bottom:15px;left:15px;color:white;margin:0;text-shadow:0 2px 10px rgba(0,0,0,.8)}
+.wrap{padding:12px;max-width:600px;margin:auto}
+.card{background:white;border-radius:16px;padding:16px;margin-bottom:12px;box-shadow:0 4px 12px rgba(0,0,0,.06)}
+.item{display:flex;justify-content:space-between;align-items:center;padding:14px;border:2px solid #f1f5f9;border-radius:12px;margin:8px 0;cursor:pointer}
+.item.sel{border-color:#0f172a;background:#f8fafc}
+.qty{display:flex;align-items:center;gap:10px}.qty b{width:22px;height:32px;display:grid;place-items:center;background:#0f172a;color:white;border-radius:8px;cursor:pointer}
+input,select{width:100%;padding:14px;border:1px solid #e2e8f0;border-radius:10px;margin:6px 0}
+.btn{width:100%;padding:18px;background:#0f172a;color:white;border:none;border-radius:12px;font-weight:800;font-size:16px;margin-top:8px}
+.total{font-size:20px;font-weight:800;text-align:right;margin:10px 0}
+</style></head><body>
+<div class="top"><img id="bizImg" src=""><h1 id="bizName">Loading...</h1></div>
+<div class="wrap"><div id="app" style="display:none">
+<div class="card"><p id="bizMeta" style="margin:0;color:#64748b"></p></div>
+<div class="card"><h3 id="listTitle">Choose</h3><div id="list"></div><div id="total" class="total"></div></div>
+<div class="card"><h3>Your Details</h3>
+<input id="cName" placeholder="Your Name"><input id="cPhone" placeholder="WhatsApp e.g 2771...">
+<input id="cDate" type="date"><select id="cTime"></select>
+<button class="btn" id="bookBtn" onclick="book()">Book Now</button>
+</div></div></div>
 <script>
 const supa=supabase.createClient("https://zyalhfwubhfsomaiomng.supabase.co","sb_publishable_oBiPfsgpmfTlZRGf5dsGQw_2SjntU7v");
-const slug=new URLSearchParams(window.location.search).get('biz')||'demo-salon';
-let biz=null,selected=[],cart={};
-async function loadBiz(){const {data:b}=await supa.from('businesses').select('*').eq('slug',slug).single(); if(!b){document.getElementById('load').innerText='Not found';return;} biz=b;
-document.getElementById('bizName').innerText=b.name; document.getElementById('bizMeta').innerText=(b.type==='shisanyama'?'🔥 Order & pickup - No queue':'💈 Book online 24/7')+' • '+b.location;
-const isFood=b.type==='shisanyama'; document.getElementById('secTitle').innerText=isFood?'Choose Your Meat':'Choose Service';
-document.getElementById('timeBox').innerHTML=isFood?`<label>Pickup Time</label><input id="bookDate" type="date"><select id="bookTime"><option>17:00</option><option>18:00</option><option>19:00</option><option>20:00</option><option>21:00</option></select>`:`<label>Date</label><input id="bookDate" type="date"><select id="bookTime"><option>08:00</option><option>09:00</option><option>10:00</option><option>11:00</option><option>12:00</option><option>13:00</option><option>14:00</option><option>15:00</option><option>16:00</option><option>17:00</option></select>`;
-document.getElementById('bookBtn').innerText=isFood?'Order on WhatsApp - Pay on Pickup':'Book Now - Pay on Arrival';
-const {data:servs}=await supa.from('services').select('*').eq('business_id',b.id); const div=document.getElementById('services'); div.innerHTML='';
-servs.forEach(s=>{const el=document.createElement('div'); el.className='service';
-if(isFood){el.innerHTML=`<div><b>${s.name}</b><br><small>${s.category} • R${s.price}</small></div><div class="qty"><button onclick="addCart('${s.id}',-1)">-</button><span id="q-${s.id}">0</span><button onclick="addCart('${s.id}',1)">+</button></div>`; cart[s.id]={item:s,qty:0};}
-else{el.innerHTML=`<div><b>${s.name}</b><br><span>R${s.price} • ${s.duration}min</span></div>`; el.onclick=()=>{document.querySelectorAll('.service').forEach(x=>x.classList.remove('selected')); el.classList.add('selected'); selected=[s];};}
-div.appendChild(el);});
-document.getElementById('load').style.display='none'; document.getElementById('app').style.display='block';}
-function addCart(id,delta){const c=cart[id]; c.qty=Math.max(0,c.qty+delta); document.getElementById('q-'+id).innerText=c.qty; let total=0; let txt=''; Object.values(cart).forEach(v=>{if(v.qty>0){total+=v.item.price*v.qty; txt+=`${v.item.name} x${v.qty} = R${v.item.price*v.qty}\n`;}}); document.getElementById('cart').innerText=txt?txt+'\nTOTAL: R'+total:''; selected=Object.values(cart).filter(v=>v.qty>0);}
-async function makeBooking(){const name=document.getElementById('custName').value; const phone=document.getElementById('custPhone').value; const date=document.getElementById('bookDate').value; const time=document.getElementById('bookTime').value;
-if(selected.length===0||!name||!phone||!date){alert('Fill all + choose items');return;}
-document.getElementById('bookBtn').innerText='Sending...';
-let serviceId=selected[0].item?selected[0].item.id:selected[0].id; let total=selected.reduce((a,v)=>a+(v.item?v.item.price*v.qty:v.price),0);
-const {error}=await supa.from('bookings').insert({business_id:biz.id,customer_name:name,customer_phone:phone,service_id:serviceId,date:date,time:time});
-if(error){alert(error.message); return;}
-let orderText=selected.map(v=>v.item?`${v.item.name} x${v.qty}`:v.name).join(', ');
-let msg=`*NEW ${biz.type==='shisanyama'?'ORDER':'BOOKING'} - ${biz.name}*%0A%0AClient: ${name}%0APhone: ${phone}%0A${biz.type==='shisanyama'?'Order':'Service'}: ${orderText}%0ATotal: R${total}%0ADate: ${date} at ${time}%0A%0ABookZA Duo`;
-window.location.href=`https://wa.me/${biz.whatsapp}?text=${msg}`;}
-loadBiz();
+const slug=new URLSearchParams(location.search).get('biz'); let biz, cart={};
+async function init(){
+const {data}=await supa.from('businesses').select('*').eq('slug',slug).single(); biz=data;
+document.getElementById('bizName').innerText=biz.name;
+document.getElementById('bizImg').src=biz.image;
+const isFood=biz.type==='shisanyama';
+document.getElementById('bizMeta').innerText=(isFood?'🔥 Pre-order & skip queue':'💈 Online booking 24/7')+' • '+biz.location;
+document.getElementById('listTitle').innerText=isFood?'Menu':'Services';
+document.getElementById('cTime').innerHTML=isFood?'<option>17:00</option><option>18:00</option><option>19:00</option><option>20:00</option><option>21:00</option>':'<option>08:00</option><option>09:00</option><option>10:00</option><option>11:00</option><option>12:00</option><option>13:00</option><option>14:00</option><option>15:00</option>';
+document.getElementById('bookBtn').innerText=isFood?'Order via WhatsApp':'Confirm Booking via WhatsApp';
+const {data:services}=await supa.from('services').select('*').eq('business_id',biz.id);
+const list=document.getElementById('list'); services.forEach(s=>{
+cart[s.id]={s, qty:0}; const div=document.createElement('div'); div.className='item';
+if(isFood){div.innerHTML=`<div><b>${s.name}</b><br><small>R${s.price}</small></div><div class="qty"><b onclick="chg('${s.id}',-1)">-</b><span id="q-${s.id}">0</span><b onclick="chg('${s.id}',1)">+</b></div>`;}
+else{div.innerHTML=`<div><b>${s.name}</b><br><small>R${s.price} • ${s.duration}min</small></div><span>○</span>`; div.onclick=()=>{document.querySelectorAll('.item').forEach(x=>{x.classList.remove('sel'); x.lastChild.innerText='○'}); div.classList.add('sel'); div.lastChild.innerText='●'; cart={}; cart[s.id]={s,qty:1}; updateTotal();};}
+list.appendChild(div);
+}); document.getElementById('app').style.display='block';
+}
+function chg(id,d){cart[id].qty=Math.max(0,cart[id].qty+d); document.getElementById('q-'+id).innerText=cart[id].qty; updateTotal();}
+function updateTotal(){let t=0; let has=false; Object.values(cart).forEach(v=>{if(v.qty>0){t+=v.s.price*v.qty; has=true;}}); document.getElementById('total').innerText=has?'Total: R'+t:'';}
+async function book(){
+const name=document.getElementById('cName').value; const phone=document.getElementById('cPhone').value;
+const date=document.getElementById('cDate').value; const time=document.getElementById('cTime').value;
+const items=Object.values(cart).filter(v=>v.qty>0); if(items.length==0||!name||!phone||!date){alert('Fill all + choose items'); return;}
+const total=items.reduce((a,v)=>a+v.s.price*v.qty,0);
+const orderText=items.map(v=>v.s.name+(v.qty>1?' x'+v.qty:'')).join(', ');
+document.getElementById('bookBtn').innerText='Saving...';
+await supa.from('bookings').insert({business_id:biz.id,customer_name:name,customer_phone:phone,service_id:items[0].s.id,date,time});
+const msg=`*NEW ${biz.type==='shisanyama'?'ORDER':'BOOKING'}*%0A${biz.name}%0A%0AName: ${name}%0APhone: ${phone}%0AOrder: ${orderText}%0ATotal: R${total}%0ADate: ${date} ${time}%0A%0Avia BookZA`;
+location.href=`https://wa.me/${biz.whatsapp}?text=${msg}`;
+}init();
 </script></body></html>
