@@ -598,10 +598,10 @@ async function init() {
     setupDateAndTime();
 
     const { data: serviceData, error: serviceError } = await supa
-      .from("services")
-      .select("id, business_id, name, price, duration, image, category")
-      .eq("business_id", biz.id)
-      .order("name");
+  .from("services")
+  .select("id, business_id, name, price, duration, image, category, special_price, special_start, special_end")
+  .eq("business_id", biz.id)
+  .order("name");
 
     if (serviceError) throw serviceError;
 
@@ -644,6 +644,43 @@ async function init() {
   }
 }
 
+/* SPECIAL OFFER PRICE */
+
+function getServicePrice(service) {
+  const originalPrice = Number(service.price);
+  const specialPrice = Number(service.special_price);
+
+  if (
+    service.special_price === null ||
+    service.special_price === undefined ||
+    !Number.isFinite(specialPrice) ||
+    specialPrice < 0 ||
+    specialPrice >= originalPrice ||
+    !service.special_start ||
+    !service.special_end
+  ) {
+    return originalPrice;
+  }
+
+  const now = Date.now();
+  const start = new Date(service.special_start).getTime();
+  const end = new Date(service.special_end).getTime();
+
+  if (
+    !Number.isFinite(start) ||
+    !Number.isFinite(end) ||
+    end <= start
+  ) {
+    return originalPrice;
+  }
+
+  if (now >= start && now < end) {
+    return specialPrice;
+  }
+
+  return originalPrice;
+}
+
 /* RENDER MENU OR SERVICES */
 
 function renderServices() {
@@ -676,10 +713,35 @@ function renderServices() {
     name.textContent = service.name;
 
     const price = document.createElement("div");
-    price.className = "item-price";
-    price.textContent = money(service.price);
+price.className = "item-price";
 
-    info.append(name, price);
+const originalPrice = Number(service.price);
+const currentPrice = getServicePrice(service);
+
+if (currentPrice < originalPrice) {
+  const oldPrice = document.createElement("span");
+  oldPrice.textContent = money(originalPrice);
+  oldPrice.style.textDecoration = "line-through";
+  oldPrice.style.color = "#777";
+
+  const discountedPrice = document.createElement("strong");
+  discountedPrice.textContent = " " + money(currentPrice);
+  discountedPrice.style.marginLeft = "8px";
+
+  price.append(oldPrice, discountedPrice);
+
+  const offerLabel = document.createElement("div");
+  offerLabel.textContent = "SPECIAL OFFER";
+  offerLabel.style.fontSize = "11px";
+  offerLabel.style.fontWeight = "700";
+  offerLabel.style.marginTop = "5px";
+
+  price.appendChild(offerLabel);
+} else {
+  price.textContent = money(originalPrice);
+}
+
+info.append(name, price);
 
     if (!isFood && service.duration) {
       const duration = document.createElement("div");
