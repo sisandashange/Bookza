@@ -1,77 +1,38 @@
 <!DOCTYPE html>
-<html>
-<head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Book Online - BookZA</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-body{font-family:sans-serif;background:#f1f5f9;margin:0;padding:15px}
-.card{background:white;padding:20px;border-radius:15px;margin-bottom:15px;box-shadow:0 2px 10px rgba(0,0,0,0.1)}
-h1{margin:0} .price{color:#0f172a;font-weight:bold;font-size:18px}
-button{background:#0f172a;color:white;padding:16px;border:none;border-radius:12px;width:100%;font-size:16px;font-weight:bold}
-input,select{width:100%;padding:14px;margin:8px 0;border:1px solid #ddd;border-radius:10px;box-sizing:border-box}
-.service{border:2px solid #e2e8f0;padding:12px;border-radius:10px;margin:8px 0;cursor:pointer}
-.service.selected{border-color:#0f172a;background:#f8fafc}
-</style>
-</head>
-<body>
-<div id="loading" class="card">Loading business... ⏳</div>
-<div id="app" style="display:none">
-  <div class="card">
-    <h1 id="bizName"></h1>
-    <p>📍 Book online 24/7 - Durban</p>
-  </div>
-  <div class="card">
-    <h3>1. Choose Service</h3>
-    <div id="services"></div>
-  </div>
-  <div class="card">
-    <h3>2. Your Details</h3>
-    <input id="custName" placeholder="Your Name">
-    <input id="custPhone" placeholder="Your WhatsApp Number">
-    <input id="bookDate" type="date">
-    <select id="bookTime">
-      <option>08:00</option><option>09:00</option><option>10:00</option><option>11:00</option><option>12:00</option><option>13:00</option><option>14:00</option><option>15:00</option><option>16:00</option><option>17:00</option>
-    </select>
-    <button id="bookBtn" onclick="makeBooking()">Book Now - Pay on Arrival</button>
-  </div>
-</div>
+<html><head><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BookZA</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>body{font-family:sans-serif;background:#f1f5f9;margin:0;padding:12px}.card{background:white;padding:16px;border-radius:14px;margin-bottom:12px}.service{border:2px solid #e2e8f0;padding:12px;border-radius:10px;margin:8px 0;cursor:pointer;display:flex;justify-content:space-between;align-items:center}.service.selected{border-color:#0f172a;background:#f8fafc}button{background:#0f172a;color:white;padding:16px;border:none;border-radius:12px;width:100%;font-weight:bold;font-size:16px}input,select{width:100%;padding:14px;margin:8px 0;border:1px solid #ddd;border-radius:10px;box-sizing:border-box}.qty{display:flex;gap:8px;align-items:center}.qty button{width:35px;padding:8px}</style>
+</head><body>
+<div id="load" class="card">Loading... ⏳</div><div id="app" style="display:none">
+<div class="card"><h1 id="bizName"></h1><p id="bizMeta"></p></div>
+<div class="card"><h3 id="secTitle"></h3><div id="services"></div></div>
+<div class="card"><h3>Your Details</h3><input id="custName" placeholder="Your Name"><input id="custPhone" placeholder="WhatsApp Number"><div id="timeBox"></div>
+<div id="cart" style="margin:12px 0;font-weight:bold"></div>
+<button id="bookBtn" onclick="makeBooking()">Book Now</button></div></div>
 <script>
-const SUPABASE_URL = "https://zyalhfwubhfsomaiomng.supabase.co";
-const SUPABASE_KEY = "sb_publishable_oBiPfsgpmfTlZRGf5dsGQw_2SjntU7v";
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-const slug = new URLSearchParams(window.location.search).get('biz') || 'demo-salon';
-let selectedService=null, currentBusiness=null;
-async function loadBiz(){
-  const {data:biz} = await supabaseClient.from('businesses').select('*').eq('slug',slug).single();
-  if(!biz){document.getElementById('loading').innerText='Business not found'; return;}
-  currentBusiness=biz;
-  document.getElementById('bizName').innerText=biz.name;
-  const {data:servs} = await supabaseClient.from('services').select('*').eq('business_id',biz.id);
-  const div=document.getElementById('services');
-  div.innerHTML='';
-  servs.forEach(s=>{
-    const el=document.createElement('div'); el.className='service';
-    el.innerHTML=`<b>${s.name}</b><br><span class="price">R${s.price} • ${s.duration}min</span>`;
-    el.onclick=()=>{document.querySelectorAll('.service').forEach(x=>x.classList.remove('selected')); el.classList.add('selected'); selectedService=s;};
-    div.appendChild(el);
-  });
-  document.getElementById('loading').style.display='none';
-  document.getElementById('app').style.display='block';
-}
-async function makeBooking(){
-  const name=document.getElementById('custName').value;
-  const phone=document.getElementById('custPhone').value;
-  const date=document.getElementById('bookDate').value;
-  const time=document.getElementById('bookTime').value;
-  if(!selectedService||!name||!phone||!date){alert('Fill all fields + select service'); return;}
-  document.getElementById('bookBtn').innerText='Booking...';
-  const {error} = await supabaseClient.from('bookings').insert({business_id:currentBusiness.id,customer_name:name,customer_phone:phone,service_id:selectedService.id,date:date,time:time});
-  if(error){alert(error.message); document.getElementById('bookBtn').innerText='Book Now'; return;}
-  const msg=`New Booking%0A%0AClient: ${name}%0APhone: ${phone}%0AService: ${selectedService.name} R${selectedService.price}%0ADate: ${date} at ${time}%0A%0ABookZA`;
-  window.location.href=`https://wa.me/${currentBusiness.whatsapp}?text=${msg}`;
-}
+const supa=supabase.createClient("https://zyalhfwubhfsomaiomng.supabase.co","sb_publishable_oBiPfsgpmfTlZRGf5dsGQw_2SjntU7v");
+const slug=new URLSearchParams(window.location.search).get('biz')||'demo-salon';
+let biz=null,selected=[],cart={};
+async function loadBiz(){const {data:b}=await supa.from('businesses').select('*').eq('slug',slug).single(); if(!b){document.getElementById('load').innerText='Not found';return;} biz=b;
+document.getElementById('bizName').innerText=b.name; document.getElementById('bizMeta').innerText=(b.type==='shisanyama'?'🔥 Order & pickup - No queue':'💈 Book online 24/7')+' • '+b.location;
+const isFood=b.type==='shisanyama'; document.getElementById('secTitle').innerText=isFood?'Choose Your Meat':'Choose Service';
+document.getElementById('timeBox').innerHTML=isFood?`<label>Pickup Time</label><input id="bookDate" type="date"><select id="bookTime"><option>17:00</option><option>18:00</option><option>19:00</option><option>20:00</option><option>21:00</option></select>`:`<label>Date</label><input id="bookDate" type="date"><select id="bookTime"><option>08:00</option><option>09:00</option><option>10:00</option><option>11:00</option><option>12:00</option><option>13:00</option><option>14:00</option><option>15:00</option><option>16:00</option><option>17:00</option></select>`;
+document.getElementById('bookBtn').innerText=isFood?'Order on WhatsApp - Pay on Pickup':'Book Now - Pay on Arrival';
+const {data:servs}=await supa.from('services').select('*').eq('business_id',b.id); const div=document.getElementById('services'); div.innerHTML='';
+servs.forEach(s=>{const el=document.createElement('div'); el.className='service';
+if(isFood){el.innerHTML=`<div><b>${s.name}</b><br><small>${s.category} • R${s.price}</small></div><div class="qty"><button onclick="addCart('${s.id}',-1)">-</button><span id="q-${s.id}">0</span><button onclick="addCart('${s.id}',1)">+</button></div>`; cart[s.id]={item:s,qty:0};}
+else{el.innerHTML=`<div><b>${s.name}</b><br><span>R${s.price} • ${s.duration}min</span></div>`; el.onclick=()=>{document.querySelectorAll('.service').forEach(x=>x.classList.remove('selected')); el.classList.add('selected'); selected=[s];};}
+div.appendChild(el);});
+document.getElementById('load').style.display='none'; document.getElementById('app').style.display='block';}
+function addCart(id,delta){const c=cart[id]; c.qty=Math.max(0,c.qty+delta); document.getElementById('q-'+id).innerText=c.qty; let total=0; let txt=''; Object.values(cart).forEach(v=>{if(v.qty>0){total+=v.item.price*v.qty; txt+=`${v.item.name} x${v.qty} = R${v.item.price*v.qty}\n`;}}); document.getElementById('cart').innerText=txt?txt+'\nTOTAL: R'+total:''; selected=Object.values(cart).filter(v=>v.qty>0);}
+async function makeBooking(){const name=document.getElementById('custName').value; const phone=document.getElementById('custPhone').value; const date=document.getElementById('bookDate').value; const time=document.getElementById('bookTime').value;
+if(selected.length===0||!name||!phone||!date){alert('Fill all + choose items');return;}
+document.getElementById('bookBtn').innerText='Sending...';
+let serviceId=selected[0].item?selected[0].item.id:selected[0].id; let total=selected.reduce((a,v)=>a+(v.item?v.item.price*v.qty:v.price),0);
+const {error}=await supa.from('bookings').insert({business_id:biz.id,customer_name:name,customer_phone:phone,service_id:serviceId,date:date,time:time});
+if(error){alert(error.message); return;}
+let orderText=selected.map(v=>v.item?`${v.item.name} x${v.qty}`:v.name).join(', ');
+let msg=`*NEW ${biz.type==='shisanyama'?'ORDER':'BOOKING'} - ${biz.name}*%0A%0AClient: ${name}%0APhone: ${phone}%0A${biz.type==='shisanyama'?'Order':'Service'}: ${orderText}%0ATotal: R${total}%0ADate: ${date} at ${time}%0A%0ABookZA Duo`;
+window.location.href=`https://wa.me/${biz.whatsapp}?text=${msg}`;}
 loadBiz();
-</script>
-</body>
-</html>
+</script></body></html>
