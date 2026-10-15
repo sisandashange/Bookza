@@ -19,7 +19,93 @@ async function login(){const {data,error}=await supa.auth.signInWithPassword({em
 async function signup(){const {data,error}=await supa.auth.signUp({email:email.value,password:pass.value}); if(error)alert(error.message); else alert('Check email then login');}
 async function logout(){await supa.auth.signOut(); location.reload();}
 async function showDash(){document.getElementById('auth').style.display='none'; document.getElementById('dash').style.display='block'; loadBiz();}
-async function loadBiz(){const {data}=await supa.from('businesses').select('*').eq('owner_id',user.id); if(data&&data[0]){currentBiz=data[0]; document.getElementById('myBiz').innerHTML=`<b>${currentBiz.name}</b> - ${currentBiz.slug}<br><a target="_blank" href="b.html?biz=${currentBiz.slug}">View Booking Link</a>`; loadServices(); loadBookings();}}
+async function loadBiz() {
+    const myBiz = document.getElementById('myBiz');
+    myBiz.textContent = 'Loading your businesses...';
+
+    const { data, error } = await supa
+        .from('businesses')
+        .select('id, name, slug, type, location, is_active')
+        .eq('owner_id', user.id)
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error('Could not load businesses:', error);
+        myBiz.textContent = 'Could not load businesses: ' + error.message;
+        return;
+    }
+
+    if (!data || data.length === 0) {
+        currentBiz = null;
+
+        myBiz.innerHTML = `
+            <p>You have no registered businesses yet.</p>
+            <p>Use the form below to submit your business for approval.</p>
+        `;
+
+        document.getElementById('sList').textContent = '';
+        document.getElementById('bookList').textContent =
+            'Register a business to manage its orders and appointments.';
+
+        return;
+    }
+
+    myBiz.innerHTML = '';
+
+    data.forEach(biz => {
+        const card = document.createElement('div');
+        card.className = 'card';
+
+        const title = document.createElement('h4');
+        title.textContent = biz.name;
+
+        const details = document.createElement('p');
+        details.textContent =
+            `${biz.location || 'Location not set'} · ${biz.type}`;
+
+        const status = document.createElement('p');
+        status.textContent = biz.is_active
+            ? 'Status: Active'
+            : 'Status: Awaiting BookZA approval';
+
+        card.append(title, details, status);
+
+        if (biz.is_active) {
+            const link = document.createElement('a');
+            link.href = `b.html?biz=${encodeURIComponent(biz.slug)}`;
+            link.target = '_blank';
+            link.rel = 'noopener';
+            link.textContent = 'View public business page';
+            card.appendChild(link);
+        }
+
+        const selectButton = document.createElement('button');
+        selectButton.textContent = 'Manage this business';
+
+        selectButton.addEventListener('click', () => {
+            currentBiz = biz;
+            loadServices();
+            loadBookings();
+
+            myBiz.querySelectorAll('[data-selected]')
+                .forEach(el => el.removeAttribute('data-selected'));
+
+            card.setAttribute('data-selected', 'true');
+            card.style.border = '2px solid #0f172a';
+        });
+
+        card.appendChild(document.createElement('br'));
+        card.appendChild(selectButton);
+        myBiz.appendChild(card);
+    });
+
+    currentBiz = data[0];
+
+    await loadServices();
+    await loadBookings();
+}
+
+
 async function createBiz() {
     const name = document.getElementById('bName').value.trim();
     const type = document.getElementById('bType').value;
