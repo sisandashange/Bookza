@@ -82,10 +82,29 @@ async function loadBiz() {
         const selectButton = document.createElement('button');
         selectButton.textContent = 'Manage this business';
 
-        selectButton.addEventListener('click', () => {
-            currentBiz = biz;
-            loadServices();
-            loadBookings();
+        selectButton.addEventListener('click', async () => {
+    currentBiz = biz;
+
+    myBiz.querySelectorAll('[data-selected]')
+        .forEach(el => {
+            el.removeAttribute('data-selected');
+            el.style.border = '';
+        });
+
+    card.setAttribute('data-selected', 'true');
+    card.style.border = '2px solid #0f172a';
+
+    document.getElementById('sList').textContent =
+        'Loading menu and services...';
+
+    document.getElementById('bookList').textContent =
+        'Loading bookings and orders...';
+
+    await loadServices();
+    await loadBookings();
+
+    alert('Selected business: ' + currentBiz.name);
+});
 
             myBiz.querySelectorAll('[data-selected]')
                 .forEach(el => el.removeAttribute('data-selected'));
