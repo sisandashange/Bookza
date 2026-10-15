@@ -831,684 +831,568 @@ async function createBiz() {
 ===================================== */
 
 async function loadServices() {
-if (!currentBiz) {
-el("sList").textContent = "Select a business first.";
-return;
-}
-
-el("sList").textContent = "Loading menu/services...";
-
-const { data, error } = await supa
-    .from("services")
-    .select("*")
-    .eq("business_id", currentBiz.id)
-    .order("name", { ascending: true });
-
-if (error) {
-    el("sList").textContent =
-        "Could not load menu/services: " + error.message;
-
-    showMessage(
-        "serviceMessage",
-        "Could not load menu/services: " + error.message,
-        "error"
-    );
-
-    return;
-}
-
-const { data: photoRows, error: photoError } = await supa
-    .from("service_photos")
-    .select("*")
-    .eq("business_id", currentBiz.id)
-    .order("display_order", { ascending: true });
-
-if (photoError) {
-    el("sList").textContent =
-        "Could not load photo records: " + photoError.message;
-
-    showMessage(
-        "serviceMessage",
-        "Could not load photos: " + photoError.message,
-        "error"
-    );
-
-    return;
-}
-
-hideMessage("serviceMessage");
-el("sList").textContent = "";
-
-if (!data || data.length === 0) {
-    el("sList").textContent =
-        "No menu items or services were found for this business.";
-    return;
-}
-
-data.forEach(function (service) {
-    const row = document.createElement("div");
-    row.className = "service-row";
-
-    const name = document.createElement("strong");
-    name.textContent = service.name;
-    row.appendChild(name);
-
-    const now = Date.now();
-
-    const hasValidOffer =
-        service.special_price !== null &&
-        service.special_price !== undefined &&
-        Number(service.special_price) >= 0 &&
-        Number(service.special_price) < Number(service.price) &&
-        service.special_start &&
-        service.special_end &&
-        new Date(service.special_start).getTime() <= now &&
-        new Date(service.special_end).getTime() > now;
-
-    const hasScheduledOffer =
-        service.special_price !== null &&
-        service.special_price !== undefined &&
-        service.special_start &&
-        service.special_end &&
-        new Date(service.special_start).getTime() > now &&
-        new Date(service.special_end).getTime() >
-            new Date(service.special_start).getTime();
-
-    const price = document.createElement("p");
-
-    if (hasValidOffer) {
-        price.textContent =
-            "Original price: R" + service.price +
-            " | SPECIAL PRICE: R" + service.special_price;
-
-        const offerStatus = document.createElement("p");
-        offerStatus.textContent = "Offer status: Active";
-        offerStatus.className = "muted";
-
-        row.appendChild(price);
-        row.appendChild(offerStatus);
-
-    } else {
-        price.textContent = "Price: R" + service.price;
-        row.appendChild(price);
-
-        if (hasScheduledOffer) {
-            const offerStatus = document.createElement("p");
-            offerStatus.textContent =
-                "Offer status: Scheduled to start " +
-                new Date(service.special_start).toLocaleString();
-
-            offerStatus.className = "muted";
-            row.appendChild(offerStatus);
-
-        } else if (
-            service.special_price !== null &&
-            service.special_price !== undefined &&
-            service.special_start &&
-            service.special_end &&
-            new Date(service.special_end).getTime() <= now
-        ) {
-            const offerStatus = document.createElement("p");
-            offerStatus.textContent = "Offer status: Expired";
-            offerStatus.className = "muted";
-            row.appendChild(offerStatus);
-        }
-    }
-
-    if (service.duration) {
-        const duration = document.createElement("p");
-        duration.className = "muted";
-        duration.textContent =
-            "Duration: " + service.duration + " minutes";
-        row.appendChild(duration);
-    }
-
-// Special-offer editor.
-const offerHeading = document.createElement("h3");
-offerHeading.textContent = "Special Offer";
-row.appendChild(offerHeading);
-
-const specialPriceLabel = document.createElement("label");
-specialPriceLabel.textContent = "Special price (R)";
-row.appendChild(specialPriceLabel);
-
-const specialPriceInput = document.createElement("input");
-specialPriceInput.type = "number";
-specialPriceInput.min = "0";
-specialPriceInput.step = "1";
-specialPriceInput.placeholder = "e.g. 50";
-specialPriceInput.value =
-    service.special_price == null ? "" : service.special_price;
-row.appendChild(specialPriceInput);
-
-const offerStartLabel = document.createElement("label");
-offerStartLabel.textContent = "Offer starts";
-row.appendChild(offerStartLabel);
-
-const offerStartInput = document.createElement("input");
-offerStartInput.type = "datetime-local";
-offerStartInput.value = service.special_start
-    ? new Date(
-        new Date(service.special_start).getTime()
-        - new Date().getTimezoneOffset() * 60000
-      ).toISOString().slice(0, 16)
-    : "";
-row.appendChild(offerStartInput);
-
-const offerEndLabel = document.createElement("label");
-offerEndLabel.textContent = "Offer ends";
-row.appendChild(offerEndLabel);
-
-const offerEndInput = document.createElement("input");
-offerEndInput.type = "datetime-local";
-offerEndInput.value = service.special_end
-    ? new Date(
-        new Date(service.special_end).getTime()
-        - new Date().getTimezoneOffset() * 60000
-      ).toISOString().slice(0, 16)
-    : "";
-row.appendChild(offerEndInput);
-
-const saveOfferButton = document.createElement("button");
-saveOfferButton.type = "button";
-saveOfferButton.textContent = "Save Special Offer";
-row.appendChild(saveOfferButton);
-
-const clearOfferButton = document.createElement("button");
-clearOfferButton.type = "button";
-clearOfferButton.textContent = "Remove Special Offer";
-clearOfferButton.className = "secondary";
-row.appendChild(clearOfferButton);
-
-saveOfferButton.addEventListener("click", async () => {
-    const specialPrice = Number(specialPriceInput.value);
-    const startValue = offerStartInput.value;
-    const endValue = offerEndInput.value;
-
-    if (
-        specialPriceInput.value.trim() === "" ||
-        !Number.isInteger(specialPrice) ||
-        specialPrice < 0 ||
-        specialPrice >= Number(service.price)
-    ) {
-        showMessage(
-            "Enter a whole-number special price lower than the original price."
-        );
+    if (!currentBiz) {
+        el("sList").textContent = "Select a business first.";
         return;
     }
 
-    if (!startValue || !endValue) {
-        showMessage("Please enter both the offer start and end dates.");
-        return;
-    }
-
-    const startDate = new Date(startValue);
-    const endDate = new Date(endValue);
-
-    if (
-        Number.isNaN(startDate.getTime()) ||
-        Number.isNaN(endDate.getTime()) ||
-        endDate <= startDate
-    ) {
-        showMessage("The offer end date must be after its start date.");
-        return;
-    }
-
-    saveOfferButton.disabled = true;
-    saveOfferButton.textContent = "Saving...";
+    el("sList").textContent = "Loading menu/services...";
 
     try {
-        const saveRequest = supa
-    .from("services")
-    .update({
-        special_price: specialPrice,
-        special_start: startDate.toISOString(),
-        special_end: endDate.toISOString()
-    })
-    .eq("id", service.id)
-    .eq("business_id", currentBiz.id)
-    .select("id, name, price, special_price, special_start, special_end")
-    .maybeSingle();
-
-const timeoutRequest = new Promise((_, reject) => {
-    setTimeout(() => {
-        reject(new Error(
-            "The save request timed out. Check your connection and Supabase response."
-        ));
-    }, 15000);
-});
-
-const { data, error } = await Promise.race([
-    saveRequest,
-    timeoutRequest
-]);
-
-console.log("Special offer save result:", {
-    data,
-    error,
-    serviceId: service.id,
-    businessId: currentBiz.id
-});
-
-if (error) {
-    throw error;
-}
-
-if (!data) {
-    throw new Error("No service was updated.");
-}
-
-        showMessage("Special offer saved successfully.");
-        await loadServices();
-    } catch (error) {
-        console.error("Save special offer error:", error);
-        showMessage("Could not save the special offer: " + error.message);
-        saveOfferButton.disabled = false;
-        saveOfferButton.textContent = "Save Special Offer";
-    }
-});
-
-clearOfferButton.addEventListener("click", async () => {
-    if (!confirm("Remove the special offer for this item?")) {
-        return;
-    }
-
-    clearOfferButton.disabled = true;
-    clearOfferButton.textContent = "Removing...";
-
-    try {
-        const { error } = await supa
+        const { data, error } = await supa
             .from("services")
-            .update({
-                special_price: null,
-                special_start: null,
-                special_end: null
-            })
-            .eq("id", service.id)
-            .eq("business_id", currentBiz.id);
+            .select("*")
+            .eq("business_id", currentBiz.id)
+            .order("name", { ascending: true });
 
-        if (error) throw error;
+        if (error) {
+            el("sList").textContent =
+                "Could not load menu/services: " + error.message;
 
-        showMessage("Special offer removed successfully.");
-        await loadServices();
-    } catch (error) {
-        console.error("Remove special offer error:", error);
-        showMessage("Could not remove the offer: " + error.message);
-        clearOfferButton.disabled = false;
-        clearOfferButton.textContent = "Remove Special Offer";
-    }
-});
-
-    // Find photos belonging to this service.
-    const servicePhotos = (photoRows || []).filter(
-        function (photo) {
-            return photo.service_id === service.id;
-        }
-    );
-
-    const photoHeading = document.createElement("p");
-    photoHeading.textContent =
-        "Photos (" + servicePhotos.length + "/3)";
-    row.appendChild(photoHeading);
-
-    // Display existing photos.
-    servicePhotos.forEach(function (photo) {
-        const photoBox = document.createElement("div");
-        photoBox.style.display = "inline-block";
-        photoBox.style.margin = "5px";
-        photoBox.style.verticalAlign = "top";
-
-        const image = document.createElement("img");
-
-        image.src = supa.storage
-            .from("bookza-service-photos")
-            .getPublicUrl(photo.storage_path)
-            .data.publicUrl;
-
-        image.alt = service.name;
-        image.loading = "lazy";
-        image.style.width = "100px";
-        image.style.height = "100px";
-        image.style.objectFit = "cover";
-        image.style.borderRadius = "8px";
-        image.style.display = "block";
-
-        photoBox.appendChild(image);
-
-        const removePhotoButton =
-            document.createElement("button");
-
-        removePhotoButton.type = "button";
-        removePhotoButton.textContent = "Delete photo";
-        removePhotoButton.className = "secondary";
-
-        removePhotoButton.addEventListener("click", function () {
-            deleteServicePhoto(photo);
-        });
-
-        photoBox.appendChild(removePhotoButton);
-        row.appendChild(photoBox);
-    });
-
-    // Add a file selector if fewer than three photos exist.
-    if (servicePhotos.length < 3) {
-        const photoLabel = document.createElement("p");
-        photoLabel.textContent =
-            "Add photos (JPG, PNG or WebP; maximum 2 MB each):";
-
-        row.appendChild(photoLabel);
-
-        const fileInput = document.createElement("input");
-        fileInput.type = "file";
-        fileInput.accept = "image/jpeg,image/png,image/webp";
-        fileInput.multiple = true;
-        fileInput.style.display = "block";
-        fileInput.style.margin = "8px 0";
-
-        row.appendChild(fileInput);
-
-        const uploadButton = document.createElement("button");
-        uploadButton.type = "button";
-        uploadButton.textContent = "Upload Photos";
-
-        uploadButton.addEventListener("click", async function () {
-            await uploadServicePhotos(
-                service,
-                fileInput,
-                uploadButton
-            );
-        });
-
-        row.appendChild(uploadButton);
-
-    } else {
-        const limitMessage = document.createElement("p");
-        limitMessage.textContent =
-            "Maximum of three photos reached.";
-        row.appendChild(limitMessage);
-    }
-
-    // Keep the existing service deletion button.
-    const deleteButton = document.createElement("button");
-    deleteButton.type = "button";
-    deleteButton.textContent = "Delete";
-    deleteButton.className = "secondary";
-
-    deleteButton.addEventListener("click", function () {
-        delService(service.id, service.name);
-    });
-
-    row.appendChild(deleteButton);
-    el("sList").appendChild(row);
-});
-
-}
-
-
-
-/* =====================================
-   UPLOAD SERVICE PHOTOS
-===================================== */
-
-async function uploadServicePhotos(
-    service,
-    fileInput,
-    uploadButton
-) {
-    if (!currentBiz) {
-        alert("Select a business first.");
-        return;
-    }
-
-    const files = Array.from(fileInput.files || []);
-
-    if (files.length === 0) {
-        alert("Choose at least one photo.");
-        return;
-    }
-
-    if (files.length > 3) {
-        alert("You can upload a maximum of three photos at a time.");
-        return;
-    }
-
-    const allowedTypes = [
-        "image/jpeg",
-        "image/png",
-        "image/webp"
-    ];
-
-    const maxSize = 2 * 1024 * 1024;
-
-    for (const file of files) {
-        if (!allowedTypes.includes(file.type)) {
-            alert(
-                "Only JPG, PNG and WebP images are allowed."
+            showMessage(
+                "serviceMessage",
+                "Could not load menu/services: " + error.message,
+                "error"
             );
             return;
         }
 
-        if (file.size === 0 || file.size > maxSize) {
-            alert(
-                "Each photo must be larger than 0 bytes and no more than 2 MB."
+        const { data: photoRows, error: photoError } = await supa
+            .from("service_photos")
+            .select("*")
+            .eq("business_id", currentBiz.id)
+            .order("display_order", { ascending: true });
+
+        if (photoError) {
+            el("sList").textContent =
+                "Could not load photo records: " + photoError.message;
+
+            showMessage(
+                "serviceMessage",
+                "Could not load photos: " + photoError.message,
+                "error"
             );
             return;
         }
-    }
 
-    // Check existing photos before uploading.
-    const { data: existing, error: existingError } = await supa
-        .from("service_photos")
-        .select("display_order")
-        .eq("business_id", currentBiz.id)
-        .eq("service_id", service.id);
+        hideMessage("serviceMessage");
+        el("sList").textContent = "";
 
-    if (existingError) {
-        alert(
-            "Could not check existing photos: " +
-            existingError.message
-        );
-        return;
-    }
-
-    const currentPhotos = existing || [];
-
-    if (currentPhotos.length + files.length > 3) {
-        alert(
-            "This item can have only three photos. " +
-            "It currently has " + currentPhotos.length + "."
-        );
-        return;
-    }
-
-    const occupiedSlots = currentPhotos.map(function (photo) {
-        return photo.display_order;
-    });
-
-    const availableSlots = [1, 2, 3].filter(function (slot) {
-        return !occupiedSlots.includes(slot);
-    });
-
-    uploadButton.disabled = true;
-    uploadButton.textContent = "Uploading...";
-
-    const uploadedPaths = [];
-
-    try {
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
-
-            const extensionByType = {
-                "image/jpeg": "jpg",
-                "image/png": "png",
-                "image/webp": "webp"
-            };
-
-            const extension = extensionByType[file.type];
-
-            const path =
-                currentBiz.id + "/" +
-                service.id + "/" +
-                crypto.randomUUID() + "." +
-                extension;
-
-            // Upload the actual image file.
-            const { error: uploadError } = await supa.storage
-                .from("bookza-service-photos")
-                .upload(path, file, {
-                    contentType: file.type,
-                    upsert: false
-                });
-
-            if (uploadError) {
-                throw new Error(
-                    "Photo upload failed: " +
-                    uploadError.message
-                );
-            }
-
-            uploadedPaths.push(path);
-
-            // Save its information in the database.
-            const { error: recordError } = await supa
-                .from("service_photos")
-                .insert({
-                    business_id: currentBiz.id,
-                    service_id: service.id,
-                    storage_path: path,
-                    display_order: availableSlots[i]
-                });
-
-            if (recordError) {
-                throw new Error(
-                    "Photo uploaded, but its database record " +
-                    "could not be saved: " +
-                    recordError.message
-                );
-            }
+        if (!data || data.length === 0) {
+            el("sList").textContent =
+                "No menu items or services were found for this business.";
+            return;
         }
 
-        fileInput.value = "";
+        data.forEach(function (service) {
+            const row = document.createElement("div");
+            row.className = "service-row";
 
-        showMessage(
-            "serviceMessage",
-            "Photo upload successful.",
-            "success"
-        );
+            const name = document.createElement("strong");
+            name.textContent = service.name;
+            row.appendChild(name);
 
-        await loadServices();
+            const now = Date.now();
+
+            const hasSpecialPrice =
+                service.special_price !== null &&
+                service.special_price !== undefined &&
+                Number.isFinite(Number(service.special_price)) &&
+                Number(service.special_price) >= 0 &&
+                Number(service.special_price) < Number(service.price);
+
+            const startTime = service.special_start
+                ? new Date(service.special_start).getTime()
+                : NaN;
+
+            const endTime = service.special_end
+                ? new Date(service.special_end).getTime()
+                : NaN;
+
+            const hasValidDates =
+                Number.isFinite(startTime) &&
+                Number.isFinite(endTime) &&
+                endTime > startTime;
+
+            const hasValidOffer =
+                hasSpecialPrice &&
+                hasValidDates &&
+                startTime <= now &&
+                endTime > now;
+
+            const hasScheduledOffer =
+                hasSpecialPrice &&
+                hasValidDates &&
+                startTime > now;
+
+            const hasExpiredOffer =
+                hasSpecialPrice &&
+                hasValidDates &&
+                endTime <= now;
+
+            const price = document.createElement("p");
+
+            if (hasValidOffer) {
+                price.textContent =
+                    "Original price: R" + service.price +
+                    " | SPECIAL PRICE: R" + service.special_price;
+
+                row.appendChild(price);
+
+                const offerStatus = document.createElement("p");
+                offerStatus.textContent = "Offer status: Active";
+                offerStatus.className = "muted";
+                row.appendChild(offerStatus);
+
+            } else {
+                price.textContent = "Price: R" + service.price;
+                row.appendChild(price);
+
+                if (hasScheduledOffer) {
+                    const offerStatus = document.createElement("p");
+
+                    offerStatus.textContent =
+                        "Offer status: Scheduled to start " +
+                        new Date(service.special_start).toLocaleString();
+
+                    offerStatus.className = "muted";
+                    row.appendChild(offerStatus);
+
+                } else if (hasExpiredOffer) {
+                    const offerStatus = document.createElement("p");
+                    offerStatus.textContent = "Offer status: Expired";
+                    offerStatus.className = "muted";
+                    row.appendChild(offerStatus);
+                }
+            }
+
+            if (service.duration) {
+                const duration = document.createElement("p");
+                duration.className = "muted";
+                duration.textContent =
+                    "Duration: " + service.duration + " minutes";
+                row.appendChild(duration);
+            }
+
+            /* SPECIAL-OFFER EDITOR */
+
+            const offerHeading = document.createElement("h3");
+            offerHeading.textContent = "Special Offer";
+            row.appendChild(offerHeading);
+
+            const specialPriceLabel = document.createElement("label");
+            specialPriceLabel.textContent = "Special price (R)";
+            row.appendChild(specialPriceLabel);
+
+            const specialPriceInput = document.createElement("input");
+            specialPriceInput.type = "number";
+            specialPriceInput.min = "0";
+            specialPriceInput.step = "1";
+            specialPriceInput.placeholder = "e.g. 40";
+            specialPriceInput.value =
+                service.special_price == null
+                    ? ""
+                    : service.special_price;
+            row.appendChild(specialPriceInput);
+
+            const offerStartLabel = document.createElement("label");
+            offerStartLabel.textContent = "Offer starts";
+            row.appendChild(offerStartLabel);
+
+            const offerStartInput = document.createElement("input");
+            offerStartInput.type = "datetime-local";
+
+            if (service.special_start) {
+                const startDate = new Date(service.special_start);
+
+                if (!Number.isNaN(startDate.getTime())) {
+                    offerStartInput.value = new Date(
+                        startDate.getTime() -
+                        startDate.getTimezoneOffset() * 60000
+                    ).toISOString().slice(0, 16);
+                }
+            }
+
+            row.appendChild(offerStartInput);
+
+            const offerEndLabel = document.createElement("label");
+            offerEndLabel.textContent = "Offer ends";
+            row.appendChild(offerEndLabel);
+
+            const offerEndInput = document.createElement("input");
+            offerEndInput.type = "datetime-local";
+
+            if (service.special_end) {
+                const endDate = new Date(service.special_end);
+
+                if (!Number.isNaN(endDate.getTime())) {
+                    offerEndInput.value = new Date(
+                        endDate.getTime() -
+                        endDate.getTimezoneOffset() * 60000
+                    ).toISOString().slice(0, 16);
+                }
+            }
+
+            row.appendChild(offerEndInput);
+
+            const saveOfferButton = document.createElement("button");
+            saveOfferButton.type = "button";
+            saveOfferButton.textContent = "Save Special Offer";
+            row.appendChild(saveOfferButton);
+
+            const clearOfferButton = document.createElement("button");
+            clearOfferButton.type = "button";
+            clearOfferButton.textContent = "Remove Special Offer";
+            clearOfferButton.className = "secondary";
+            row.appendChild(clearOfferButton);
+
+            /* SAVE SPECIAL OFFER */
+
+            saveOfferButton.addEventListener("click", async function () {
+                const specialPriceText =
+                    specialPriceInput.value.trim();
+
+                const specialPrice = Number(specialPriceText);
+                const startValue = offerStartInput.value;
+                const endValue = offerEndInput.value;
+
+                if (
+                    specialPriceText === "" ||
+                    !Number.isInteger(specialPrice) ||
+                    specialPrice < 0 ||
+                    specialPrice >= Number(service.price)
+                ) {
+                    showMessage(
+                        "serviceMessage",
+                        "Enter a whole-number special price that is at least R0 and lower than the original price.",
+                        "error"
+                    );
+                    return;
+                }
+
+                if (!startValue || !endValue) {
+                    showMessage(
+                        "serviceMessage",
+                        "Please enter both the offer start and end dates.",
+                        "error"
+                    );
+                    return;
+                }
+
+                const startDate = new Date(startValue);
+                const endDate = new Date(endValue);
+
+                if (
+                    Number.isNaN(startDate.getTime()) ||
+                    Number.isNaN(endDate.getTime()) ||
+                    endDate <= startDate
+                ) {
+                    showMessage(
+                        "serviceMessage",
+                        "The offer end date must be after its start date.",
+                        "error"
+                    );
+                    return;
+                }
+
+                if (!currentBiz || currentBiz.id !== service.business_id) {
+                    showMessage(
+                        "serviceMessage",
+                        "Your selected business has changed. Select the business again and retry.",
+                        "error"
+                    );
+                    return;
+                }
+
+                saveOfferButton.disabled = true;
+                saveOfferButton.textContent = "Saving...";
+
+                let timeoutId;
+
+                try {
+                    const saveRequest = supa
+                        .from("services")
+                        .update({
+                            special_price: specialPrice,
+                            special_start: startDate.toISOString(),
+                            special_end: endDate.toISOString()
+                        })
+                        .eq("id", service.id)
+                        .eq("business_id", currentBiz.id)
+                        .select(
+                            "id, name, price, special_price, special_start, special_end"
+                        )
+                        .maybeSingle();
+
+                    const timeoutRequest = new Promise(function (_, reject) {
+                        timeoutId = setTimeout(function () {
+                            reject(
+                                new Error(
+                                    "The save request timed out. Check your connection and Supabase response."
+                                )
+                            );
+                        }, 15000);
+                    });
+
+                    const { data: updatedService, error: saveError } =
+                        await Promise.race([
+                            saveRequest,
+                            timeoutRequest
+                        ]);
+
+                    if (saveError) {
+                        throw saveError;
+                    }
+
+                    if (!updatedService) {
+                        throw new Error(
+                            "No service was updated. Check that you own this business and that you are logged in."
+                        );
+                    }
+
+                    console.log(
+                        "Special offer saved:",
+                        updatedService
+                    );
+
+                    await loadServices();
+
+                    showMessage(
+                        "serviceMessage",
+                        "Special offer saved successfully.",
+                        "success"
+                    );
+
+                } catch (error) {
+                    console.error(
+                        "Save special offer error:",
+                        error
+                    );
+
+                    showMessage(
+                        "serviceMessage",
+                        "Could not save the special offer: " +
+                        (error.message || "Unknown error"),
+                        "error"
+                    );
+
+                } finally {
+                    if (timeoutId) {
+                        clearTimeout(timeoutId);
+                    }
+
+                    saveOfferButton.disabled = false;
+                    saveOfferButton.textContent =
+                        "Save Special Offer";
+                }
+            });
+
+            /* REMOVE SPECIAL OFFER */
+
+            clearOfferButton.addEventListener(
+                "click",
+                async function () {
+                    if (
+                        !confirm(
+                            "Remove the special offer for this item?"
+                        )
+                    ) {
+                        return;
+                    }
+
+                    if (
+                        !currentBiz ||
+                        currentBiz.id !== service.business_id
+                    ) {
+                        showMessage(
+                            "serviceMessage",
+                            "Your selected business has changed. Select the business again and retry.",
+                            "error"
+                        );
+                        return;
+                    }
+
+                    clearOfferButton.disabled = true;
+                    clearOfferButton.textContent = "Removing...";
+
+                    try {
+                        const { data: updatedService, error: clearError } =
+                            await supa
+                                .from("services")
+                                .update({
+                                    special_price: null,
+                                    special_start: null,
+                                    special_end: null
+                                })
+                                .eq("id", service.id)
+                                .eq("business_id", currentBiz.id)
+                                .select("id")
+                                .maybeSingle();
+
+                        if (clearError) {
+                            throw clearError;
+                        }
+
+                        if (!updatedService) {
+                            throw new Error(
+                                "No service was updated. Check that you own this business and that you are logged in."
+                            );
+                        }
+
+                        await loadServices();
+
+                        showMessage(
+                            "serviceMessage",
+                            "Special offer removed successfully.",
+                            "success"
+                        );
+
+                    } catch (error) {
+                        console.error(
+                            "Remove special offer error:",
+                            error
+                        );
+
+                        showMessage(
+                            "serviceMessage",
+                            "Could not remove the offer: " +
+                            (error.message || "Unknown error"),
+                            "error"
+                        );
+
+                    } finally {
+                        clearOfferButton.disabled = false;
+                        clearOfferButton.textContent =
+                            "Remove Special Offer";
+                    }
+                }
+            );
+
+            /* SERVICE PHOTOS */
+
+            const servicePhotos = (photoRows || []).filter(
+                function (photo) {
+                    return photo.service_id === service.id;
+                }
+            );
+
+            const photoHeading = document.createElement("p");
+            photoHeading.textContent =
+                "Photos (" + servicePhotos.length + "/3)";
+            row.appendChild(photoHeading);
+
+            servicePhotos.forEach(function (photo) {
+                const photoBox = document.createElement("div");
+                photoBox.style.display = "inline-block";
+                photoBox.style.margin = "5px";
+                photoBox.style.verticalAlign = "top";
+
+                const image = document.createElement("img");
+
+                image.src = supa.storage
+                    .from("bookza-service-photos")
+                    .getPublicUrl(photo.storage_path)
+                    .data.publicUrl;
+
+                image.alt = service.name;
+                image.loading = "lazy";
+                image.style.width = "100px";
+                image.style.height = "100px";
+                image.style.objectFit = "cover";
+                image.style.borderRadius = "8px";
+                image.style.display = "block";
+
+                photoBox.appendChild(image);
+
+                const removePhotoButton =
+                    document.createElement("button");
+
+                removePhotoButton.type = "button";
+                removePhotoButton.textContent = "Delete photo";
+                removePhotoButton.className = "secondary";
+
+                removePhotoButton.addEventListener(
+                    "click",
+                    function () {
+                        deleteServicePhoto(photo);
+                    }
+                );
+
+                photoBox.appendChild(removePhotoButton);
+                row.appendChild(photoBox);
+            });
+
+            if (servicePhotos.length < 3) {
+                const photoLabel = document.createElement("p");
+                photoLabel.textContent =
+                    "Add photos (JPG, PNG or WebP; maximum 2 MB each):";
+
+                row.appendChild(photoLabel);
+
+                const fileInput = document.createElement("input");
+                fileInput.type = "file";
+                fileInput.accept =
+                    "image/jpeg,image/png,image/webp";
+                fileInput.multiple = true;
+                fileInput.style.display = "block";
+                fileInput.style.margin = "8px 0";
+
+                row.appendChild(fileInput);
+
+                const uploadButton = document.createElement("button");
+                uploadButton.type = "button";
+                uploadButton.textContent = "Upload Photos";
+
+                uploadButton.addEventListener(
+                    "click",
+                    async function () {
+                        await uploadServicePhotos(
+                            service,
+                            fileInput,
+                            uploadButton
+                        );
+                    }
+                );
+
+                row.appendChild(uploadButton);
+
+            } else {
+                const limitMessage = document.createElement("p");
+                limitMessage.textContent =
+                    "Maximum of three photos reached.";
+                row.appendChild(limitMessage);
+            }
+
+            /* DELETE SERVICE */
+
+            const deleteButton = document.createElement("button");
+            deleteButton.type = "button";
+            deleteButton.textContent = "Delete";
+            deleteButton.className = "secondary";
+
+            deleteButton.addEventListener("click", function () {
+                delService(service.id, service.name);
+            });
+
+            row.appendChild(deleteButton);
+            el("sList").appendChild(row);
+        });
 
     } catch (error) {
-        /*
-         * Clean up files uploaded during this attempt
-         * if the upload process fails.
-         */
-        if (uploadedPaths.length > 0) {
-            const { error: cleanupError } = await supa.storage
-                .from("bookza-service-photos")
-                .remove(uploadedPaths);
+        console.error("Load services error:", error);
 
-            if (cleanupError) {
-                console.error(
-                    "Photo cleanup failed:",
-                    cleanupError.message
-                );
-            }
-        }
-
-        /*
-         * Remove any metadata records for files that were
-         * uploaded during this attempt.
-         */
-        if (uploadedPaths.length > 0) {
-            const { error: metadataCleanupError } = await supa
-                .from("service_photos")
-                .delete()
-                .eq("business_id", currentBiz.id)
-                .eq("service_id", service.id)
-                .in("storage_path", uploadedPaths);
-
-            if (metadataCleanupError) {
-                console.error(
-                    "Photo metadata cleanup failed:",
-                    metadataCleanupError.message
-                );
-            }
-        }
+        el("sList").textContent =
+            "Could not load menu/services: " +
+            (error.message || "Unknown error");
 
         showMessage(
             "serviceMessage",
-            error.message,
+            "Could not load menu/services: " +
+            (error.message || "Unknown error"),
             "error"
         );
-
-    } finally {
-        uploadButton.disabled = false;
-        uploadButton.textContent = "Upload Photos";
     }
 }
-
-
-
-/* =====================================
-   DELETE SERVICE PHOTO
-===================================== */
-
-async function deleteServicePhoto(photo) {
-    if (!currentBiz) {
-        alert("Select a business first.");
-        return;
-    }
-
-    if (
-        !confirm(
-            "Delete this photo? This action cannot be undone."
-        )
-    ) {
-        return;
-    }
-
-    // Remove the image from Storage first.
-    const { error: storageError } = await supa.storage
-        .from("bookza-service-photos")
-        .remove([photo.storage_path]);
-
-    if (storageError) {
-        showMessage(
-            "serviceMessage",
-            "Could not delete photo: " +
-            storageError.message,
-            "error"
-        );
-        return;
-    }
-
-    // Remove its database record.
-    const { error: recordError } = await supa
-        .from("service_photos")
-        .delete()
-        .eq("id", photo.id)
-        .eq("business_id", currentBiz.id);
-
-    if (recordError) {
-        showMessage(
-            "serviceMessage",
-            "The image was removed, but its database record " +
-            "could not be deleted: " + recordError.message,
-            "error"
-        );
-        return;
-    }
-
-    showMessage(
-        "serviceMessage",
-        "Photo deleted successfully.",
-        "success"
-    );
-
-    await loadServices();
-}
-
 
 /* =====================================
    ADD MENU / SERVICE ITEM
