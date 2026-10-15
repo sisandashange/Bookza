@@ -831,186 +831,241 @@ async function createBiz() {
 ===================================== */
 
 async function loadServices() {
-    if (!currentBiz) {
-        el("sList").textContent = "Select a business first.";
-        return;
-    }
+if (!currentBiz) {
+el("sList").textContent = "Select a business first.";
+return;
+}
 
-    el("sList").textContent = "Loading menu/services...";
+el("sList").textContent = "Loading menu/services...";
 
-    const { data, error } = await supa
-        .from("services")
-        .select("*")
-        .eq("business_id", currentBiz.id)
-        .order("name", { ascending: true });
+const { data, error } = await supa
+    .from("services")
+    .select("*")
+    .eq("business_id", currentBiz.id)
+    .order("name", { ascending: true });
 
-    if (error) {
-        el("sList").textContent =
-            "Could not load menu/services: " + error.message;
+if (error) {
+    el("sList").textContent =
+        "Could not load menu/services: " + error.message;
 
-        showMessage(
-            "serviceMessage",
-            "Could not load menu/services: " + error.message,
-            "error"
-        );
+    showMessage(
+        "serviceMessage",
+        "Could not load menu/services: " + error.message,
+        "error"
+    );
 
-        return;
-    }
+    return;
+}
 
-    const { data: photoRows, error: photoError } = await supa
-        .from("service_photos")
-        .select("*")
-        .eq("business_id", currentBiz.id)
-        .order("display_order", { ascending: true });
+const { data: photoRows, error: photoError } = await supa
+    .from("service_photos")
+    .select("*")
+    .eq("business_id", currentBiz.id)
+    .order("display_order", { ascending: true });
 
-    if (photoError) {
-        el("sList").textContent =
-            "Could not load photo records: " + photoError.message;
+if (photoError) {
+    el("sList").textContent =
+        "Could not load photo records: " + photoError.message;
 
-        showMessage(
-            "serviceMessage",
-            "Could not load photos: " + photoError.message,
-            "error"
-        );
+    showMessage(
+        "serviceMessage",
+        "Could not load photos: " + photoError.message,
+        "error"
+    );
 
-        return;
-    }
+    return;
+}
 
-    hideMessage("serviceMessage");
-    el("sList").textContent = "";
+hideMessage("serviceMessage");
+el("sList").textContent = "";
 
-    if (!data || data.length === 0) {
-        el("sList").textContent =
-            "No menu items or services were found for this business.";
+if (!data || data.length === 0) {
+    el("sList").textContent =
+        "No menu items or services were found for this business.";
+    return;
+}
 
-        return;
-    }
+data.forEach(function (service) {
+    const row = document.createElement("div");
+    row.className = "service-row";
 
-    data.forEach(function (service) {
-        const row = document.createElement("div");
-        row.className = "service-row";
+    const name = document.createElement("strong");
+    name.textContent = service.name;
+    row.appendChild(name);
 
-        const name = document.createElement("strong");
-        name.textContent = service.name;
+    const now = Date.now();
 
-        const price = document.createElement("p");
+    const hasValidOffer =
+        service.special_price !== null &&
+        service.special_price !== undefined &&
+        Number(service.special_price) >= 0 &&
+        Number(service.special_price) < Number(service.price) &&
+        service.special_start &&
+        service.special_end &&
+        new Date(service.special_start).getTime() <= now &&
+        new Date(service.special_end).getTime() > now;
+
+    const hasScheduledOffer =
+        service.special_price !== null &&
+        service.special_price !== undefined &&
+        service.special_start &&
+        service.special_end &&
+        new Date(service.special_start).getTime() > now &&
+        new Date(service.special_end).getTime() >
+            new Date(service.special_start).getTime();
+
+    const price = document.createElement("p");
+
+    if (hasValidOffer) {
+        price.textContent =
+            "Original price: R" + service.price +
+            " | SPECIAL PRICE: R" + service.special_price;
+
+        const offerStatus = document.createElement("p");
+        offerStatus.textContent = "Offer status: Active";
+        offerStatus.className = "muted";
+
+        row.appendChild(price);
+        row.appendChild(offerStatus);
+
+    } else {
         price.textContent = "Price: R" + service.price;
-
-        row.appendChild(name);
         row.appendChild(price);
 
-        if (service.duration) {
-            const duration = document.createElement("p");
-            duration.className = "muted";
-            duration.textContent =
-                "Duration: " + service.duration + " minutes";
+        if (hasScheduledOffer) {
+            const offerStatus = document.createElement("p");
+            offerStatus.textContent =
+                "Offer status: Scheduled to start " +
+                new Date(service.special_start).toLocaleString();
 
-            row.appendChild(duration);
+            offerStatus.className = "muted";
+            row.appendChild(offerStatus);
+
+        } else if (
+            service.special_price !== null &&
+            service.special_price !== undefined &&
+            service.special_start &&
+            service.special_end &&
+            new Date(service.special_end).getTime() <= now
+        ) {
+            const offerStatus = document.createElement("p");
+            offerStatus.textContent = "Offer status: Expired";
+            offerStatus.className = "muted";
+            row.appendChild(offerStatus);
         }
+    }
 
-        // Find photos belonging to this service.
-        const servicePhotos = (photoRows || []).filter(
-            function (photo) {
-                return photo.service_id === service.id;
-            }
-        );
+    if (service.duration) {
+        const duration = document.createElement("p");
+        duration.className = "muted";
+        duration.textContent =
+            "Duration: " + service.duration + " minutes";
+        row.appendChild(duration);
+    }
 
-        const photoHeading = document.createElement("p");
-        photoHeading.textContent =
-            "Photos (" + servicePhotos.length + "/3)";
-        row.appendChild(photoHeading);
+    // Find photos belonging to this service.
+    const servicePhotos = (photoRows || []).filter(
+        function (photo) {
+            return photo.service_id === service.id;
+        }
+    );
 
-        // Display existing photos.
-        servicePhotos.forEach(function (photo) {
-            const photoBox = document.createElement("div");
-            photoBox.style.display = "inline-block";
-            photoBox.style.margin = "5px";
-            photoBox.style.verticalAlign = "top";
+    const photoHeading = document.createElement("p");
+    photoHeading.textContent =
+        "Photos (" + servicePhotos.length + "/3)";
+    row.appendChild(photoHeading);
 
-            const image = document.createElement("img");
+    // Display existing photos.
+    servicePhotos.forEach(function (photo) {
+        const photoBox = document.createElement("div");
+        photoBox.style.display = "inline-block";
+        photoBox.style.margin = "5px";
+        photoBox.style.verticalAlign = "top";
 
-            image.src = supa.storage
-                .from("bookza-service-photos")
-                .getPublicUrl(photo.storage_path)
-                .data.publicUrl;
+        const image = document.createElement("img");
 
-            image.alt = service.name;
-            image.loading = "lazy";
-            image.style.width = "100px";
-            image.style.height = "100px";
-            image.style.objectFit = "cover";
-            image.style.borderRadius = "8px";
-            image.style.display = "block";
+        image.src = supa.storage
+            .from("bookza-service-photos")
+            .getPublicUrl(photo.storage_path)
+            .data.publicUrl;
 
-            photoBox.appendChild(image);
+        image.alt = service.name;
+        image.loading = "lazy";
+        image.style.width = "100px";
+        image.style.height = "100px";
+        image.style.objectFit = "cover";
+        image.style.borderRadius = "8px";
+        image.style.display = "block";
 
-            const removePhotoButton =
-                document.createElement("button");
+        photoBox.appendChild(image);
 
-            removePhotoButton.type = "button";
-            removePhotoButton.textContent = "Delete photo";
-            removePhotoButton.className = "secondary";
+        const removePhotoButton =
+            document.createElement("button");
 
-            removePhotoButton.addEventListener("click", function () {
-                deleteServicePhoto(photo);
-            });
+        removePhotoButton.type = "button";
+        removePhotoButton.textContent = "Delete photo";
+        removePhotoButton.className = "secondary";
 
-            photoBox.appendChild(removePhotoButton);
-            row.appendChild(photoBox);
+        removePhotoButton.addEventListener("click", function () {
+            deleteServicePhoto(photo);
         });
 
-        // Add a file selector if fewer than three photos exist.
-        if (servicePhotos.length < 3) {
-            const photoLabel = document.createElement("p");
-            photoLabel.textContent =
-                "Add photos (JPG, PNG or WebP; maximum 2 MB each):";
-
-            row.appendChild(photoLabel);
-
-            const fileInput = document.createElement("input");
-            fileInput.type = "file";
-            fileInput.accept = "image/jpeg,image/png,image/webp";
-            fileInput.multiple = true;
-            fileInput.style.display = "block";
-            fileInput.style.margin = "8px 0";
-
-            row.appendChild(fileInput);
-
-            const uploadButton = document.createElement("button");
-            uploadButton.type = "button";
-            uploadButton.textContent = "Upload Photos";
-
-            uploadButton.addEventListener("click", async function () {
-                await uploadServicePhotos(
-                    service,
-                    fileInput,
-                    uploadButton
-                );
-            });
-
-            row.appendChild(uploadButton);
-
-        } else {
-            const limitMessage = document.createElement("p");
-            limitMessage.textContent =
-                "Maximum of three photos reached.";
-
-            row.appendChild(limitMessage);
-        }
-
-        // Keep the existing service deletion button.
-        const deleteButton = document.createElement("button");
-        deleteButton.type = "button";
-        deleteButton.textContent = "Delete";
-        deleteButton.className = "secondary";
-
-        deleteButton.addEventListener("click", function () {
-            delService(service.id, service.name);
-        });
-
-        row.appendChild(deleteButton);
-        el("sList").appendChild(row);
+        photoBox.appendChild(removePhotoButton);
+        row.appendChild(photoBox);
     });
+
+    // Add a file selector if fewer than three photos exist.
+    if (servicePhotos.length < 3) {
+        const photoLabel = document.createElement("p");
+        photoLabel.textContent =
+            "Add photos (JPG, PNG or WebP; maximum 2 MB each):";
+
+        row.appendChild(photoLabel);
+
+        const fileInput = document.createElement("input");
+        fileInput.type = "file";
+        fileInput.accept = "image/jpeg,image/png,image/webp";
+        fileInput.multiple = true;
+        fileInput.style.display = "block";
+        fileInput.style.margin = "8px 0";
+
+        row.appendChild(fileInput);
+
+        const uploadButton = document.createElement("button");
+        uploadButton.type = "button";
+        uploadButton.textContent = "Upload Photos";
+
+        uploadButton.addEventListener("click", async function () {
+            await uploadServicePhotos(
+                service,
+                fileInput,
+                uploadButton
+            );
+        });
+
+        row.appendChild(uploadButton);
+
+    } else {
+        const limitMessage = document.createElement("p");
+        limitMessage.textContent =
+            "Maximum of three photos reached.";
+        row.appendChild(limitMessage);
+    }
+
+    // Keep the existing service deletion button.
+    const deleteButton = document.createElement("button");
+    deleteButton.type = "button";
+    deleteButton.textContent = "Delete";
+    deleteButton.className = "secondary";
+
+    deleteButton.addEventListener("click", function () {
+        delService(service.id, service.name);
+    });
+
+    row.appendChild(deleteButton);
+    el("sList").appendChild(row);
+});
+
 }
 
 
