@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>BookZA | Customer History</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+            color: #111;
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: #111;
+            color: white;
+            padding: 22px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        header h1 {
+            margin: 0 0 8px;
+            font-size: 25px;
+        }
+
+        header p {
+            margin: 0;
+            color: #ddd;
+        }
+
+        .card {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            padding: 18px;
+            margin-bottom: 16px;
+            overflow-wrap: anywhere;
+        }
+
+        .muted {
+            color: #666;
+            line-height: 1.5;
+        }
+
+        .customer-name {
+            margin-top: 0;
+            margin-bottom: 8px;
+            font-size: 21px;
+        }
+
+        .customer-phone {
+            font-weight: bold;
+            margin-bottom: 14px;
+        }
+
+        .summary {
+            background: #f2f2f2;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 14px 0;
+            line-height: 1.8;
+        }
+
+        .order {
+            border-top: 1px solid #ddd;
+            padding: 15px 0;
+        }
+
+        .order:last-child {
+            padding-bottom: 0;
+        }
+
+        .order h3 {
+            margin: 0 0 10px;
+        }
+
+        .order p {
+            margin: 7px 0;
+            line-height: 1.5;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 5px 9px;
+            border: 1px solid #ccc;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: bold;
+            text-transform: capitalize;
+        }
+
+        button {
+            width: 100%;
+            padding: 13px;
+            border: none;
+            border-radius: 8px;
+            background: #111;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: wait;
+        }
+
+        .back-button {
+            background: white;
+            color: #111;
+            border: 1px solid #111;
+            margin-bottom: 20px;
+        }
+
+        .message {
+            padding: 14px;
+            border-radius: 8px;
+            background: white;
+            border: 1px solid #ddd;
+            line-height: 1.5;
+            margin-bottom: 15px;
+        }
+
+        .error {
+            color: #a00000;
+            border-color: #e0aaaa;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 12px;
+            }
+
+            header {
+                padding: 18px;
+            }
+
+            .card {
+                padding: 14px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+<div class="container">
+
+    <header>
+        <h1>BookZA</h1>
+        <p>Customer History</p>
+    </header>
+
+    <button
+        type="button"
+        class="back-button"
+        onclick="goBack()"
+    >
+        ← Back to Owner Dashboard
+    </button>
+
+    <div class="card">
+        <h2 id="businessName">Loading business...</h2>
+
+        <p class="muted">
+            View returning customers and their previous orders
+            for this business.
+        </p>
+
+        <button
+            id="refreshButton"
+            type="button"
+            onclick="loadCustomerHistory()"
+        >
+            Refresh Customer History
+        </button>
+    </div>
+
+    <div id="message" class="message">
+        Checking your access...
+    </div>
+
+    <div id="customerList"></div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+"use strict";
+
+/* =====================================
+   SUPABASE CONNECTION
+===================================== */
+
+const SUPABASE_URL =
+    "https://zyalhfwubhfsomaiomng.supabase.co";
+
+const SUPABASE_KEY =
+    "sb_publishable_oBiPfsgpmfTlZRGf5dsGQw_2SjntU7v";
+
+const db = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+);
+
+/* =====================================
+   PAGE STATE
+===================================== */
+
+const params = new URLSearchParams(window.location.search);
+
+const businessId = params.get("business");
+
+let currentUser = null;
+let currentBusiness = null;
+let loading = false;
+
+/* =====================================
+   SAFE HTML OUTPUT
+===================================== */
+
+function escapeHtml(value) {
+    return String(value ?? "").replace(/[&<>"']/g, function (char) {
+        const replacements = {
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#39;"
+        };
+
+        return replacements[char];
+    });
+}
+
+function showMessage(message, isError = false) {
+    const box = document.getElementById("message");
+
+    box.textContent = message;
+    box.className = isError
+        ? "message error"
+        : "message";
+}
+
+function formatDate(value) {
+    if (!value) {
+        return "Not provided";
+    }
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+        return String(value);
+    }
+
+    return date.toLocaleString("en-ZA", {
+        dateStyle: "medium",
+        timeStyle: "short"
+    });
+}
+
+function formatRand(value) {
+    return "R" + Number(value || 0).toFixed(2);
+}
+
+/* =====================================
+   BACK TO DASHBOARD
+===================================== */
+
+function goBack() {
+    window.location.href = "owner.html";
+}
+
+/* =====================================
+   VERIFY OWNER ACCESS
+===================================== */
+
+async function initialisePage() {
+    try {
+        if (!businessId) {
+            showMessage(
+                "No business was selected. Return to the dashboard and open Customer History again.",
+                true
+            );
+
+            document.getElementById("businessName").textContent =
+                "Business not selected";
+
+            return;
+        }
+
+        const {
+            data: sessionData,
+            error: sessionError
+        } = await db.auth.getSession();
+
+        if (sessionError) {
+            throw sessionError;
+        }
+
+        currentUser = sessionData.session?.user || null;
+
+        if (!currentUser) {
+            showMessage(
+                "You must log in to view customer history.",
+                true
+            );
+
+            return;
+        }
+
+        /*
+          The business must belong to the currently
+          authenticated user. A URL parameter alone
+          does not grant access.
+        */
+
+        const {
+            data: business,
+            error: businessError
+        } = await db
+            .from("businesses")
+            .select("id, name, owner_id")
+            .eq("id", businessId)
+            .eq("owner_id", currentUser.id)
+            .maybeSingle();
+
+        if (businessError) {
+            throw businessError;
+        }
+
+        if (!business || business.owner_id !== currentUser.id) {
+            document.getElementById("businessName").textContent =
+                "Access denied";
+
+            showMessage(
+                "You do not have permission to view customer history for this business.",
+                true
+            );
+
+            return;
+        }
+
+        currentBusiness = business;
+
+        document.getElementById("businessName").textContent =
+            business.name;
+
+        await loadCustomerHistory();
+
+    } catch (error) {
+        console.error("Customer history access error:", error);
+
+        showMessage(
+            "We could not verify your access. Please check your connection and try again.",
+            true
+        );
+    }
+}
+
+/* =====================================
+   LOAD CUSTOMER HISTORY
+===================================== */
+
+async function loadCustomerHistory() {
+    if (loading) {
+        return;
+    }
+
+    if (!currentUser || !currentBusiness) {
+        showMessage(
+            "Your business access has not been verified. Please reload the page.",
+            true
+        );
+
+        return;
+    }
+
+    loading = true;
+
+    const refreshButton = document.getElementById("refreshButton");
+    const customerList = document.getElementById("customerList");
+
+    refreshButton.disabled = true;
+    refreshButton.textContent = "Loading...";
+    customerList.replaceChildren();
+
+    showMessage("Loading customer history...");
+
+    try {
+        /*
+          Fetch orders for this business only.
+          Database Row Level Security must also enforce
+          that the signed-in owner can read these orders.
+        */
+
+        const {
+            data: orders,
+            error: ordersError
+        } = await db
+            .from("bookza_orders")
+            .select(
+                "id, business_id, customer_id, customer_name, customer_phone, order_type, booking_date, booking_time, total_amount, status, created_at"
+            )
+            .eq("business_id", currentBusiness.id)
+            .order("created_at", { ascending: false });
+
+        if (ordersError) {
+            throw ordersError;
+        }
+
+        if (!orders || orders.length === 0) {
+            showMessage(
+                "No customer orders have been found for this business yet."
+            );
+
+            return;
+        }
+
+        /*
+          Load item snapshots for these orders.
+          Each item belongs to an order already retrieved
+          for the verified business.
+        */
+
+        const orderIds = orders.map(order => order.id);
+
+        const {
+            data: items,
+            error: itemsError
+        } = await db
+            .from("bookza_order_items")
+            .select(
+                "order_id, item_name, quantity, unit_price, subtotal"
+            )
+            .in("order_id", orderIds);
+
+        if (itemsError) {
+            throw itemsError;
+        }
+
+        const itemsByOrder = {};
+
+        (items || []).forEach(item => {
+            if (!itemsByOrder[item.order_id]) {
+                itemsByOrder[item.order_id] = [];
+            }
+
+            itemsByOrder[item.order_id].push(item);
+        });
+
+        /*
+          Group orders by customer ID.
+          For older orders without a customer ID, use
+          the phone number as a fallback when available.
+        */
+
+        const customers = new Map();
+
+        orders.forEach(order => {
+            const phone = String(order.customer_phone || "").trim();
+
+            const key = order.customer_id
+                ? "id:" + order.customer_id
+                : phone
+                    ? "phone:" + phone
+                    : "order:" + order.id;
+
+            if (!customers.has(key)) {
+                customers.set(key, {
+                    name: order.customer_name || "Customer",
+                    phone: phone || "Not provided",
+                    orders: []
+                });
+            }
+
+            const customer = customers.get(key);
+
+            if (
+                order.created_at &&
+                customer.orders.length === 0
+            ) {
+                customer.name =
+                    order.customer_name || customer.name;
+            }
+
+            customer.orders.push(order);
+        });
+
+        customerList.replaceChildren();
+
+        for (const customer of customers.values()) {
+            const card = document.createElement("section");
+            card.className = "card";
+
+            const totalSpent = customer.orders.reduce(
+                (sum, order) => sum + Number(order.total_amount || 0),
+                0
+            );
+
+            const firstOrder = customer.orders[0];
+
+            let html = `
+                <h2 class="customer-name">
+                    ${escapeHtml(customer.name)}
+                </h2>
+
+                <div class="customer-phone">
+                    Phone: ${escapeHtml(customer.phone)}
+                </div>
+
+                <div class="summary">
+                    <strong>Total orders:</strong>
+                    ${customer.orders.length}<br>
+
+                    <strong>Total order value:</strong>
+                    ${escapeHtml(formatRand(totalSpent))}<br>
+
+                    <strong>Most recent order:</strong>
+                    ${escapeHtml(formatDate(firstOrder.created_at))}
+                </div>
+
+                <h3>Previous Orders</h3>
+            `;
+
+            customer.orders.forEach(order => {
+                const orderItems = itemsByOrder[order.id] || [];
+
+                let itemsHtml = "";
+
+                if (orderItems.length) {
+                    itemsHtml = orderItems.map(item => `
+                        <p>
+                            ${escapeHtml(item.item_name)}
+                            × ${escapeHtml(item.quantity)}
+                            — ${escapeHtml(formatRand(item.subtotal))}
+                        </p>
+                    `).join("");
+                } else {
+                    itemsHtml = `
+                        <p class="muted">
+                            Item details are unavailable.
+                        </p>
+                    `;
+                }
+
+                const requestedDate =
+                    order.booking_date || "Not provided";
+
+                const requestedTime =
+                    order.booking_time || "Not provided";
+
+                html += `
+                    <div class="order">
+                        <h3>
+                            Order ${escapeHtml(order.id)}
+                        </h3>
+
+                        <p>
+                            <strong>Order type:</strong>
+                            ${escapeHtml(order.order_type)}
+                        </p>
+
+                        <p>
+                            <strong>Placed:</strong>
+                            ${escapeHtml(formatDate(order.created_at))}
+                        </p>
+
+                        <p>
+                            <strong>Requested date:</strong>
+                            ${escapeHtml(requestedDate)}
+                        </p>
+
+                        <p>
+                            <strong>Requested time:</strong>
+                            ${escapeHtml(requestedTime)}
+                        </p>
+
+                        ${itemsHtml}
+
+                        <p>
+                            <strong>Total:</strong>
+                            ${escapeHtml(formatRand(order.total_amount))}
+                        </p>
+
+                        <p>
+                            <strong>Status:</strong>
+                            <span class="status">
+                                ${escapeHtml(order.status)}
+                            </span>
+                        </p>
+                    </div>
+                `;
+            });
+
+            card.innerHTML = html;
+            customerList.appendChild(card);
+        }
+
+        showMessage(
+            "Loaded " + customers.size +
+            " customer record(s) and " +
+            orders.length + " order(s) for " +
+            currentBusiness.name + "."
+        );
+
+    } catch (error) {
+        console.error("Customer history loading error:", error);
+
+        showMessage(
+            "Customer history could not be loaded. This may be caused by a database permission or Row Level Security policy. Check the error before changing any database settings.",
+            true
+        );
+
+    } finally {
+        loading = false;
+        refreshButton.disabled = false;
+        refreshButton.textContent = "Refresh Customer History";
+    }
+}
+
+/* =====================================
+   START
+===================================== */
+
+initialisePage();
+</script>
+
+</body>
+</html>
