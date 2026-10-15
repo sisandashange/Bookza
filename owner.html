@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>BookZA Owner</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>body{font-family:sans-serif;background:#f8fafc;margin:0;padding:12px}.card{background:white;padding:16px;border-radius:12px;margin:10px 0} input,select{width:100%;padding:12px;margin:6px 0;border:1px solid #ddd;border-radius:8px} button{padding:12px 16px;background:#0f172a;color:white;border:none;border-radius:8px;font-weight:bold;cursor:pointer} table{width:100%;border-collapse:collapse} td,th{padding:8px;border-bottom:1px solid #eee;text-align:left}</style>
+</head><body>
+<h1>BookZA Owner Dashboard</h1>
+<div id="auth" class="card"><h3>Login</h3><input id="email" placeholder="Email"><input id="pass" type="password" placeholder="Password"><button onclick="login()">Login</button><button onclick="signup()">Sign Up</button></div>
+<div id="dash" style="display:none">
+<div class="card"><h3>My Business</h3><div id="myBiz"></div><h4>Add New Business</h4><input id="bName" placeholder="Business Name e.g Max's Grill"><select id="bType"><option value="salon">💈 Salon/Barber</option><option value="shisanyama">🔥 Shisa-Nyama</option></select><input id="bWhats" placeholder="WhatsApp 277..."><input id="bLoc" placeholder="Location e.g Umlazi Mega City"><button onclick="createBiz()">Create Business</button></div>
+<div class="card"><h3>My Menu / Services</h3><input id="sName" placeholder="Item name"><input id="sPrice" type="number" placeholder="Price"><input id="sDur" type="number" placeholder="Minutes (15)" value="15"><button onclick="addService()">Add</button><div id="sList"></div></div>
+<div class="card"><h3>Bookings / Orders</h3><div id="bookList">Loading...</div></div>
+<button onclick="logout()">Logout</button>
+</div>
+<script>
+const supa=supabase.createClient("https://zyalhfwubhfsomaiomng.supabase.co","sb_publishable_oBiPfsgpmfTlZRGf5dsGQw_2SjntU7v");
+let user=null, currentBiz=null;
+async function check(){const {data}=await supa.auth.getSession(); if(data.session){user=data.session.user; showDash();}}
+async function login(){const {data,error}=await supa.auth.signInWithPassword({email:email.value,password:pass.value}); if(error)alert(error.message); else location.reload();}
+async function signup(){const {data,error}=await supa.auth.signUp({email:email.value,password:pass.value}); if(error)alert(error.message); else alert('Check email then login');}
+async function logout(){await supa.auth.signOut(); location.reload();}
+async function showDash(){document.getElementById('auth').style.display='none'; document.getElementById('dash').style.display='block'; loadBiz();}
+async function loadBiz(){const {data}=await supa.from('businesses').select('*').eq('owner_id',user.id); if(data&&data[0]){currentBiz=data[0]; document.getElementById('myBiz').innerHTML=`<b>${currentBiz.name}</b> - ${currentBiz.slug}<br><a target="_blank" href="b.html?biz=${currentBiz.slug}">View Booking Link</a>`; loadServices(); loadBookings();}}
+async function createBiz(){const slug=bName.value.toLowerCase().replace(/[^a-z0-9]+/g,'-'); const {data,error}=await supa.from('businesses').insert({slug,name:bName.value,type:bType.value,whatsapp:bWhats.value,location:bLoc.value,owner_id:user.id,is_active:true}).select().single(); if(error)alert(error.message); else{alert('Created!'); loadBiz();}}
+async function loadServices(){if(!currentBiz)return; const {data}=await supa.from('services').select('*').eq('business_id',currentBiz.id); document.getElementById('sList').innerHTML=data.map(s=>`${s.name} - R${s.price} <button onclick="delService('${s.id}')">x</button>`).join('<br>');}
+async function addService(){const {error}=await supa.from('services').insert({business_id:currentBiz.id,name:sName.value,price:parseFloat(sPrice.value),duration:parseInt(sDur.value)}); if(error)alert(error.message); else loadServices();}
+async function delService(id){await supa.from('services').delete().eq('id',id); loadServices();}
+async function loadBookings(){const {data}=await supa.from('bookings').select('*,services(name)').eq('business_id',currentBiz.id).order('created_at',{ascending:false}).limit(20); document.getElementById('bookList').innerHTML='<table><tr><th>Date</th><th>Client</th><th>Item</th></tr>'+data.map(b=>`<tr><td>${b.date} ${b.time}</td><td>${b.customer_name}<br>${b.customer_phone}</td><td>${b.services?.name||''}</td></tr>`).join('')+'</table>';}
+check();
+</script></body></html>
