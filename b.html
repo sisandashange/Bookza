@@ -54,6 +54,6 @@ const orderText=items.map(v=>v.s.name+(v.qty>1?' x'+v.qty:'')).join(', ');
 document.getElementById('bookBtn').innerText='Saving...';
 await supa.from('bookings').insert({business_id:biz.id,customer_name:name,customer_phone:phone,service_id:items[0].s.id,date,time});
 const msg=`*NEW ${biz.type==='shisanyama'?'ORDER':'BOOKING'}*%0A${biz.name}%0A%0AName: ${name}%0APhone: ${phone}%0AOrder: ${orderText}%0ATotal: R${total}%0ADate: ${date} ${time}%0A%0Avia BookZA`;
-location.href=`https://wa.me/${biz.whatsapp}?text=${msg}`;
+let cleanNum = String(biz.whatsapp).replace(/\D/g,''); if(cleanNum.startsWith('0')) cleanNum = '27' + cleanNum.substring(1); location.href='https://wa.me/'+cleanNum+'?text='+msg;
 }init();
 </script></body></html>
