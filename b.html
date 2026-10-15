@@ -1023,18 +1023,50 @@ el("orderForm").addEventListener("submit", async event => {
         : "Please confirm appointment availability."
     ].join("\n");
 
-    showMessage(
-      "Your request has been saved! WhatsApp will open next. Send the prepared message to notify the business. Reference: " + orderId,
-      "success"
-    );
+    const confirmation = document.getElementById("orderConfirmation");
+const confirmationTitle = document.getElementById("confirmationTitle");
+const confirmationReference = document.getElementById("confirmationReference");
+const confirmationDetails = document.getElementById("confirmationDetails");
+const confirmationTotal = document.getElementById("confirmationTotal");
+const confirmationSchedule = document.getElementById("confirmationSchedule");
+const sendConfirmationWhatsApp = document.getElementById("sendConfirmationWhatsApp");
 
-    button.textContent = "Opening WhatsApp...";
+confirmationTitle.textContent = isFood
+  ? "Order placed successfully!"
+  : "Appointment request saved!";
 
-    const whatsappURL =
-      "https://wa.me/" + whatsapp +
-      "?text=" + encodeURIComponent(message);
+confirmationReference.textContent = "Reference: " + orderId;
+confirmationDetails.textContent = "";
 
-    window.location.href = whatsappURL;
+lines.forEach(function (line) {
+  const item = document.createElement("p");
+  item.textContent = line;
+  confirmationDetails.appendChild(item);
+});
+
+confirmationTotal.textContent = "Total: " + money(total);
+
+confirmationSchedule.textContent =
+  (isFood ? "Collection date: " : "Requested date: ") +
+  date + " · Time: " + time;
+
+confirmation.hidden = false;
+
+sendConfirmationWhatsApp.onclick = function () {
+  const whatsappURL =
+    "https://wa.me/" + whatsapp +
+    "?text=" + encodeURIComponent(message);
+
+  window.location.href = whatsappURL;
+};
+
+button.textContent = "Request Saved";
+button.disabled = true;
+
+confirmation.scrollIntoView({
+  behavior: "smooth",
+  block: "start"
+});
 
   } catch (error) {
     console.error("BookZA submission error:", error);
