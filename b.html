@@ -1,59 +1,977 @@
 <!DOCTYPE html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>BookZA</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>BookZA | Order or Book</title>
+
+<meta name="theme-color" content="#000000">
+<meta name="description" content="Order food or book local services with BookZA.">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <style>
-*{box-sizing:border-box;font-family:Inter,sans-serif}body{margin:0;background:#f8fafc}
-.top{height:220px;background:#000;position:relative}.top img{width:100%;height:100%;object-fit:cover;opacity:.8}
-.top h1{position:absolute;bottom:15px;left:15px;color:white;margin:0;text-shadow:0 2px 10px rgba(0,0,0,.8)}
-.wrap{padding:12px;max-width:600px;margin:auto}
-.card{background:white;border-radius:16px;padding:16px;margin-bottom:12px;box-shadow:0 4px 12px rgba(0,0,0,.06)}
-.item{display:flex;justify-content:space-between;align-items:center;padding:14px;border:2px solid #f1f5f9;border-radius:12px;margin:8px 0;cursor:pointer}
-.item.sel{border-color:#0f172a;background:#f8fafc}
-.qty{display:flex;align-items:center;gap:10px}.qty b{width:22px;height:32px;display:grid;place-items:center;background:#0f172a;color:white;border-radius:8px;cursor:pointer}
-input,select{width:100%;padding:14px;border:1px solid #e2e8f0;border-radius:10px;margin:6px 0}
-.btn{width:100%;padding:18px;background:#0f172a;color:white;border:none;border-radius:12px;font-weight:800;font-size:16px;margin-top:8px}
-.total{font-size:20px;font-weight:800;text-align:right;margin:10px 0}
-</style></head><body>
-<div class="top"><img id="bizImg" src=""><h1 id="bizName">Loading...</h1></div>
-<div class="wrap"><div id="app" style="display:none">
-<div class="card"><p id="bizMeta" style="margin:0;color:#64748b"></p></div>
-<div class="card"><h3 id="listTitle">Choose</h3><div id="list"></div><div id="total" class="total"></div></div>
-<div class="card"><h3>Your Details</h3>
-<input id="cName" placeholder="Your Name"><input id="cPhone" placeholder="WhatsApp e.g 2771...">
-<input id="cDate" type="date"><select id="cTime"></select>
-<button class="btn" id="bookBtn" onclick="book()">Book Now</button>
-</div></div></div>
-<script>
-const supa=supabase.createClient("https://zyalhfwubhfsomaiomng.supabase.co","sb_publishable_oBiPfsgpmfTlZRGf5dsGQw_2SjntU7v");
-const slug=new URLSearchParams(location.search).get('biz'); let biz, cart={};
-async function init(){
-const {data}=await supa.from('businesses').select('*').eq('slug',slug).single(); biz=data;
-document.getElementById('bizName').innerText=biz.name;
-document.getElementById('bizImg').src=biz.image;
-const isFood=biz.type==='shisanyama';
-document.getElementById('bizMeta').innerText=(isFood?'🔥 Pre-order & skip queue':'💈 Online booking 24/7')+' • '+biz.location;
-document.getElementById('listTitle').innerText=isFood?'Menu':'Services';
-document.getElementById('cTime').innerHTML=isFood?'<option>17:00</option><option>18:00</option><option>19:00</option><option>20:00</option><option>21:00</option>':'<option>08:00</option><option>09:00</option><option>10:00</option><option>11:00</option><option>12:00</option><option>13:00</option><option>14:00</option><option>15:00</option>';
-document.getElementById('bookBtn').innerText=isFood?'Order via WhatsApp':'Confirm Booking via WhatsApp';
-const {data:services}=await supa.from('services').select('*').eq('business_id',biz.id);
-const list=document.getElementById('list'); services.forEach(s=>{
-cart[s.id]={s, qty:0}; const div=document.createElement('div'); div.className='item';
-if(isFood){div.innerHTML=`<div><b>${s.name}</b><br><small>R${s.price}</small></div><div class="qty"><b onclick="chg('${s.id}',-1)">-</b><span id="q-${s.id}">0</span><b onclick="chg('${s.id}',1)">+</b></div>`;}
-else{div.innerHTML=`<div><b>${s.name}</b><br><small>R${s.price} • ${s.duration}min</small></div><span>○</span>`; div.onclick=()=>{document.querySelectorAll('.item').forEach(x=>{x.classList.remove('sel'); x.lastChild.innerText='○'}); div.classList.add('sel'); div.lastChild.innerText='●'; cart={}; cart[s.id]={s,qty:1}; updateTotal();};}
-list.appendChild(div);
-}); document.getElementById('app').style.display='block';
+* {
+  box-sizing: border-box;
 }
-function chg(id,d){cart[id].qty=Math.max(0,cart[id].qty+d); document.getElementById('q-'+id).innerText=cart[id].qty; updateTotal();}
-function updateTotal(){let t=0; let has=false; Object.values(cart).forEach(v=>{if(v.qty>0){t+=v.s.price*v.qty; has=true;}}); document.getElementById('total').innerText=has?'Total: R'+t:'';}
-async function book(){
-const name=document.getElementById('cName').value; const phone=document.getElementById('cPhone').value;
-const date=document.getElementById('cDate').value; const time=document.getElementById('cTime').value;
-const items=Object.values(cart).filter(v=>v.qty>0); if(items.length==0||!name||!phone||!date){alert('Fill all + choose items'); return;}
-const total=items.reduce((a,v)=>a+v.s.price*v.qty,0);
-const orderText=items.map(v=>v.s.name+(v.qty>1?' x'+v.qty:'')).join(', ');
-document.getElementById('bookBtn').innerText='Saving...';
-await supa.from('bookings').insert({business_id:biz.id,customer_name:name,customer_phone:phone,service_id:items[0].s.id,date,time});
-const msg=`*NEW ${biz.type==='shisanyama'?'ORDER':'BOOKING'}*%0A${biz.name}%0A%0AName: ${name}%0APhone: ${phone}%0AOrder: ${orderText}%0ATotal: R${total}%0ADate: ${date} ${time}%0A%0Avia BookZA`;
-let cleanNum = String(biz.whatsapp).replace(/\D/g,''); if(cleanNum.startsWith('0')) cleanNum = '27' + cleanNum.substring(1); location.href='https://wa.me/'+cleanNum+'?text='+msg;
-}init();
-</script></body></html>
+
+body {
+  margin: 0;
+  background: #f7f7f7;
+  color: #111;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+button, input, select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: #fff;
+  border-bottom: 1px solid #eee;
+}
+
+.logo {
+  font-size: 25px;
+  font-weight: 900;
+  letter-spacing: -1px;
+}
+
+.logo span {
+  color: #777;
+}
+
+.back {
+  text-decoration: none;
+  color: #111;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.hero {
+  height: 230px;
+  position: relative;
+  background: #111;
+  overflow: hidden;
+}
+
+.hero img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: .72;
+}
+
+.hero-content {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 24px 18px;
+  color: white;
+  background: linear-gradient(transparent, rgba(0,0,0,.9));
+}
+
+.hero-content h1 {
+  margin: 0 0 8px;
+  font-size: 28px;
+}
+
+.hero-content p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.container {
+  max-width: 650px;
+  padding: 18px 14px 40px;
+  margin: auto;
+}
+
+.card {
+  background: white;
+  border: 1px solid #eee;
+  border-radius: 15px;
+  padding: 18px;
+  margin-bottom: 15px;
+  box-shadow: 0 3px 12px rgba(0,0,0,.035);
+}
+
+.card h2 {
+  font-size: 19px;
+  margin: 0 0 7px;
+}
+
+.muted {
+  color: #737373;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.item:last-child {
+  border-bottom: none;
+}
+
+.item-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.item-name {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.item-price {
+  margin-top: 6px;
+  font-size: 14px;
+}
+
+.item-duration {
+  color: #777;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.qty {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.qty button {
+  height: 35px;
+  width: 35px;
+  border: 1px solid #ddd;
+  background: white;
+  border-radius: 9px;
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.qty button:active {
+  background: #eee;
+}
+
+.qty-value {
+  min-width: 15px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.choose-btn {
+  padding: 10px 13px;
+  background: white;
+  color: #111;
+  border: 1px solid #111;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.item.selected .choose-btn {
+  background: #111;
+  color: white;
+}
+
+.total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 16px;
+  margin-top: 8px;
+  border-top: 2px solid #111;
+  font-weight: 800;
+}
+
+.total-amount {
+  font-size: 23px;
+}
+
+.field {
+  margin-top: 15px;
+}
+
+.field label {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+input, select {
+  display: block;
+  width: 100%;
+  padding: 14px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 9px;
+  color: #111;
+  outline: none;
+}
+
+input:focus, select:focus {
+  border-color: #111;
+}
+
+.help {
+  margin-top: 6px;
+  color: #777;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.btn {
+  display: block;
+  width: 100%;
+  padding: 16px;
+  border: none;
+  border-radius: 10px;
+  background: #111;
+  color: white;
+  font-weight: 800;
+  margin-top: 20px;
+}
+
+.btn:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+.message {
+  display: none;
+  padding: 14px;
+  border-radius: 10px;
+  margin-bottom: 15px;
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.message.error {
+  display: block;
+  background: #fff0f0;
+  border: 1px solid #ffcaca;
+  color: #9d1717;
+}
+
+.message.success {
+  display: block;
+  background: #f0fff4;
+  border: 1px solid #b7ebc6;
+  color: #166534;
+}
+
+.empty {
+  padding: 20px 0;
+  text-align: center;
+  color: #777;
+  font-size: 14px;
+}
+
+.footer {
+  padding: 25px 15px;
+  text-align: center;
+  color: #777;
+  font-size: 12px;
+}
+
+@media (min-width: 700px) {
+  .hero {
+    height: 290px;
+  }
+
+  .hero-content h1 {
+    font-size: 36px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<header class="header">
+  <div class="logo">Book<span>ZA</span></div>
+  <a class="back" href="index.html">← Marketplace</a>
+</header>
+
+<section class="hero">
+  <img id="bizImg" alt="" hidden>
+  <div class="hero-content">
+    <h1 id="bizName">Loading business...</h1>
+    <p id="bizLocation">Please wait</p>
+  </div>
+</section>
+
+<main class="container">
+
+  <div id="notice" class="message" role="status" aria-live="polite"></div>
+
+  <section class="card">
+    <h2 id="introTitle">Welcome</h2>
+    <p id="introText" class="muted">
+      Loading business information...
+    </p>
+  </section>
+
+  <section class="card">
+    <h2 id="listTitle">Menu & Services</h2>
+    <p id="listSubtitle" class="muted">
+      Select the items you want.
+    </p>
+
+    <div id="list">
+      <div class="empty">Loading menu...</div>
+    </div>
+
+    <div class="total-row">
+      <span>Total</span>
+      <span id="total" class="total-amount">R0</span>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2 id="detailsTitle">Your Details</h2>
+    <p class="muted" id="detailsSubtitle">
+      Enter your details to continue.
+    </p>
+
+    <form id="orderForm">
+
+      <div class="field">
+        <label for="cName">Full name</label>
+        <input
+          id="cName"
+          type="text"
+          maxlength="100"
+          autocomplete="name"
+          placeholder="Enter your name"
+          required
+        >
+      </div>
+
+      <div class="field">
+        <label for="cPhone">Your WhatsApp number</label>
+        <input
+          id="cPhone"
+          type="tel"
+          maxlength="25"
+          autocomplete="tel"
+          placeholder="e.g. 0821234567"
+          required
+        >
+        <div class="help">
+          Include your country code if you use an international number.
+        </div>
+      </div>
+
+      <div class="field">
+        <label id="dateLabel" for="cDate">Date</label>
+        <input id="cDate" type="date" required>
+      </div>
+
+      <div class="field">
+        <label id="timeLabel" for="cTime">Time</label>
+        <select id="cTime" required></select>
+        <div class="help" id="timeHelp">
+          Choose your preferred time.
+        </div>
+      </div>
+
+      <button id="submitBtn" class="btn" type="submit" disabled>
+        Loading...
+      </button>
+
+    </form>
+  </section>
+
+  <p class="muted">
+    Your order is not complete until it has been saved successfully
+    and you have sent the prepared WhatsApp message to the business.
+  </p>
+
+</main>
+
+<footer class="footer">
+  <strong>BookZA</strong>
+  <p>Book Local. Order Ahead. Skip the Queue.</p>
+</footer>
+
+<script>
+"use strict";
+
+/* SUPABASE CONNECTION */
+
+const supa = window.supabase.createClient(
+  "https://zyalhfwubhfsomaiomng.supabase.co",
+  "sb_publishable_oBiPfsgpmfTlZRGf5dsGQw_2SjntU7v"
+);
+
+const slug = new URLSearchParams(location.search).get("biz");
+
+let biz = null;
+let services = [];
+let cart = {};
+let isFood = false;
+let isReady = false;
+let submitting = false;
+
+/* ELEMENT HELPERS */
+
+function el(id) {
+  return document.getElementById(id);
+}
+
+function showMessage(message, type = "error") {
+  const box = el("notice");
+  box.className = "message " + type;
+  box.textContent = message;
+
+  box.scrollIntoView({
+    behavior: "smooth",
+    block: "center"
+  });
+}
+
+function clearMessage() {
+  el("notice").className = "message";
+  el("notice").textContent = "";
+}
+
+function money(amount) {
+  return "R" + Number(amount).toLocaleString("en-ZA");
+}
+
+function localDateString(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+
+  return `${y}-${m}-${d}`;
+}
+
+function validDate(dateString) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+    return false;
+  }
+
+  const d = new Date(dateString + "T12:00:00");
+
+  return !Number.isNaN(d.getTime()) &&
+    localDateString(d) === dateString;
+}
+
+/* INITIALISE DATE AND TIMES */
+
+function setupDateAndTime() {
+  const dateInput = el("cDate");
+
+  dateInput.min = localDateString();
+
+  const maxDate = new Date();
+  maxDate.setDate(maxDate.getDate() + 90);
+  dateInput.max = localDateString(maxDate);
+
+  const times = [];
+
+  if (isFood) {
+    for (let h = 10; h <= 21; h++) {
+      times.push(String(h).padStart(2, "0") + ":00");
+      times.push(String(h).padStart(2, "0") + ":30");
+    }
+  } else {
+    for (let h = 8; h <= 17; h++) {
+      times.push(String(h).padStart(2, "0") + ":00");
+      if (h < 17) {
+        times.push(String(h).padStart(2, "0") + ":30");
+      }
+    }
+  }
+
+  el("cTime").replaceChildren();
+
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Choose a time";
+  placeholder.disabled = true;
+  placeholder.selected = true;
+  el("cTime").appendChild(placeholder);
+
+  times.forEach(time => {
+    const option = document.createElement("option");
+    option.value = time;
+    option.textContent = time;
+    el("cTime").appendChild(option);
+  });
+
+  el("dateLabel").textContent =
+    isFood ? "Collection date" : "Appointment date";
+
+  el("timeLabel").textContent =
+    isFood ? "Collection time" : "Appointment time";
+
+  el("timeHelp").textContent = isFood
+    ? "Choose your preferred collection time. Confirm availability with the business."
+    : "Choose your preferred appointment time. Availability must be confirmed by the business.";
+}
+
+/* LOAD BUSINESS */
+
+async function init() {
+  try {
+    if (!slug) {
+      throw new Error("No business was selected. Return to the marketplace and choose a business.");
+    }
+
+    const { data, error } = await supa
+      .from("businesses")
+      .select("*")
+      .eq("slug", slug)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    if (!data) {
+      throw new Error("This business could not be found or is currently unavailable.");
+    }
+
+    biz = data;
+    isFood = biz.type === "shisanyama";
+
+    el("bizName").textContent = biz.name || "BookZA Business";
+    el("bizLocation").textContent = "📍 " + (biz.location || "South Africa");
+
+    if (biz.image) {
+      el("bizImg").src = biz.image;
+      el("bizImg").hidden = false;
+
+      el("bizImg").onerror = () => {
+        el("bizImg").hidden = true;
+      };
+    } else {
+      el("bizImg").hidden = true;
+    }
+
+    el("introTitle").textContent = isFood
+      ? "Order Ahead"
+      : "Book an Appointment";
+
+    el("introText").textContent = isFood
+      ? "Choose your food, select quantities and request a collection time. Your order will be prepared for WhatsApp."
+      : "Choose a service and your preferred appointment time. The business must confirm availability.";
+
+    el("listTitle").textContent = isFood
+      ? "Our Menu"
+      : "Our Services";
+
+    el("listSubtitle").textContent = isFood
+      ? "Add items to your order."
+      : "Choose one service for your appointment.";
+
+    el("detailsSubtitle").textContent = isFood
+      ? "Enter your details for your collection order."
+      : "Enter your details for your booking request.";
+
+    el("submitBtn").textContent = isFood
+      ? "Place Order via WhatsApp →"
+      : "Request Appointment via WhatsApp →";
+
+    setupDateAndTime();
+
+    const { data: serviceData, error: serviceError } = await supa
+      .from("services")
+      .select("id, business_id, name, price, duration, image, category")
+      .eq("business_id", biz.id)
+      .order("name");
+
+    if (serviceError) throw serviceError;
+
+    services = serviceData || [];
+
+    services.forEach(service => {
+      const price = Number(service.price);
+
+      if (
+        service.id &&
+        Number.isSafeInteger(price) &&
+        price >= 0
+      ) {
+        cart[service.id] = {
+          service,
+          quantity: 0
+        };
+      }
+    });
+
+    renderServices();
+
+    isReady = true;
+    el("submitBtn").disabled = false;
+
+  } catch (error) {
+    console.error("BookZA initialisation error:", error);
+
+    el("bizName").textContent = "Business unavailable";
+    el("bizLocation").textContent = "Please return to the marketplace.";
+
+    el("list").innerHTML = "";
+
+    showMessage(
+      error.message || "Unable to load this business. Please try again."
+    );
+
+    el("submitBtn").disabled = true;
+    el("submitBtn").textContent = "Unavailable";
+  }
+}
+
+/* RENDER MENU OR SERVICES */
+
+function renderServices() {
+  const list = el("list");
+  list.replaceChildren();
+
+  const validServices = services.filter(service =>
+    cart[service.id]
+  );
+
+  if (!validServices.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = "No menu items or services are available yet.";
+    list.appendChild(empty);
+    updateTotal();
+    return;
+  }
+
+  validServices.forEach(service => {
+    const row = document.createElement("div");
+    row.className = "item";
+    row.id = "item-" + service.id;
+
+    const info = document.createElement("div");
+    info.className = "item-info";
+
+    const name = document.createElement("div");
+    name.className = "item-name";
+    name.textContent = service.name;
+
+    const price = document.createElement("div");
+    price.className = "item-price";
+    price.textContent = money(service.price);
+
+    info.append(name, price);
+
+    if (!isFood && service.duration) {
+      const duration = document.createElement("div");
+      duration.className = "item-duration";
+      duration.textContent = service.duration + " minutes";
+      info.appendChild(duration);
+    }
+
+    if (isFood) {
+      const controls = document.createElement("div");
+      controls.className = "qty";
+
+      const minus = document.createElement("button");
+      minus.type = "button";
+      minus.textContent = "−";
+      minus.setAttribute("aria-label", "Remove one " + service.name);
+      minus.addEventListener("click", () => changeQuantity(service.id, -1));
+
+      const quantity = document.createElement("span");
+      quantity.className = "qty-value";
+      quantity.id = "qty-" + service.id;
+      quantity.textContent = "0";
+
+      const plus = document.createElement("button");
+      plus.type = "button";
+      plus.textContent = "+";
+      plus.setAttribute("aria-label", "Add one " + service.name);
+      plus.addEventListener("click", () => changeQuantity(service.id, 1));
+
+      controls.append(minus, quantity, plus);
+      row.append(info, controls);
+
+    } else {
+      const choose = document.createElement("button");
+      choose.type = "button";
+      choose.className = "choose-btn";
+      choose.textContent = "Choose";
+
+      choose.addEventListener("click", () => {
+        Object.values(cart).forEach(item => {
+          item.quantity = 0;
+        });
+
+        cart[service.id].quantity = 1;
+
+        renderServices();
+        updateTotal();
+      });
+
+      if (cart[service.id].quantity > 0) {
+        row.classList.add("selected");
+        choose.textContent = "Selected ✓";
+      }
+
+      row.append(info, choose);
+    }
+
+    list.appendChild(row);
+  });
+
+  updateTotal();
+}
+
+/* CART */
+
+function changeQuantity(id, difference) {
+  if (!cart[id] || !isFood) return;
+
+  const next = cart[id].quantity + difference;
+
+  if (next < 0 || next > 50) return;
+
+  cart[id].quantity = next;
+
+  const quantity = el("qty-" + id);
+
+  if (quantity) {
+    quantity.textContent = String(next);
+  }
+
+  updateTotal();
+}
+
+function selectedItems() {
+  return Object.values(cart)
+    .filter(item => item.quantity > 0)
+    .map(item => ({
+      id: item.service.id,
+      name: item.service.name,
+      price: Number(item.service.price),
+      quantity: item.quantity
+    }));
+}
+
+function updateTotal() {
+  const items = selectedItems();
+
+  const total = items.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  );
+
+  el("total").textContent = money(total);
+}
+
+/* WHATSAPP NUMBER */
+
+function normaliseWhatsApp(number) {
+  let digits = String(number || "").replace(/\D/g, "");
+
+  if (digits.startsWith("00")) {
+    digits = digits.substring(2);
+  } else if (digits.startsWith("0")) {
+    digits = "27" + digits.substring(1);
+  }
+
+  if (digits.length < 10 || digits.length > 15) {
+    return "";
+  }
+
+  return digits;
+}
+
+/* SUBMIT ORDER */
+
+el("orderForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  clearMessage();
+
+  if (!isReady || !biz || submitting) {
+    return;
+  }
+
+  const name = el("cName").value.trim();
+  const phone = el("cPhone").value.trim();
+  const date = el("cDate").value;
+  const time = el("cTime").value;
+
+  const items = selectedItems();
+
+  if (name.length < 2 || name.length > 100) {
+    showMessage("Please enter your full name.");
+    return;
+  }
+
+  const phoneDigits = phone.replace(/\D/g, "");
+
+  if (phoneDigits.length < 10 || phoneDigits.length > 15) {
+    showMessage("Please enter a valid WhatsApp number.");
+    return;
+  }
+
+  if (!validDate(date) || date < localDateString()) {
+    showMessage("Please select today or a future date.");
+    return;
+  }
+
+  const maximumDate = new Date();
+  maximumDate.setDate(maximumDate.getDate() + 90);
+
+  if (date > localDateString(maximumDate)) {
+    showMessage("Please choose a date within the next 90 days.");
+    return;
+  }
+
+  if (!time) {
+    showMessage("Please choose a time.");
+    return;
+  }
+
+  if (!items.length) {
+    showMessage(
+      isFood
+        ? "Please add at least one food item."
+        : "Please select a service."
+    );
+    return;
+  }
+
+  const whatsapp = normaliseWhatsApp(biz.whatsapp);
+
+  if (!whatsapp) {
+    showMessage("This business has no valid WhatsApp number configured. Please contact the business directly.");
+    return;
+  }
+
+  const total = items.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  );
+
+  if (!Number.isSafeInteger(total) || total < 0) {
+    showMessage("We could not calculate your total. Please try again.");
+    return;
+  }
+
+  submitting = true;
+
+  const button = el("submitBtn");
+  button.disabled = true;
+  button.textContent = "Saving your request...";
+
+  try {
+    const payload = items.map(item => ({
+      service_id: item.id,
+      quantity: item.quantity
+    }));
+
+    const { data: orderId, error } = await supa.rpc(
+      "bookza_create_order",
+      {
+        p_business_id: biz.id,
+        p_customer_name: name,
+        p_customer_phone: phone,
+        p_order_type: isFood ? "food" : "appointment",
+        p_booking_date: date,
+        p_booking_time: time,
+        p_items: payload
+      }
+    );
+
+    if (error) {
+      console.error("BookZA order save error:", error);
+      throw new Error(
+        "We could not save your request. Nothing has been sent to WhatsApp. Please try again."
+      );
+    }
+
+    if (!orderId) {
+      throw new Error(
+        "The database did not return an order reference. Please contact the business before trying again."
+      );
+    }
+
+    const lines = items.map(item => {
+      return `${item.name} x ${item.quantity} — ${money(item.price * item.quantity)}`;
+    });
+
+    const message = [
+      isFood ? "NEW BOOKZA ORDER" : "NEW BOOKZA APPOINTMENT REQUEST",
+      "",
+      "Business: " + biz.name,
+      "Customer: " + name,
+      "Phone: " + phone,
+      "",
+      isFood ? "ORDER ITEMS:" : "SERVICE:",
+      ...lines,
+      "",
+      "TOTAL: " + money(total),
+      isFood ? "Collection date: " + date : "Requested date: " + date,
+      "Requested time: " + time,
+      "Reference: " + orderId,
+      "",
+      "Submitted via BookZA.",
+      isFood
+        ? "Please confirm the order and collection time."
+        : "Please confirm appointment availability."
+    ].join("\n");
+
+    showMessage(
+      "Your request has been saved! WhatsApp will open next. Send the prepared message to notify the business. Reference: " + orderId,
+      "success"
+    );
+
+    button.textContent = "Opening WhatsApp...";
+
+    const whatsappURL =
+      "https://wa.me/" + whatsapp +
+      "?text=" + encodeURIComponent(message);
+
+    window.location.href = whatsappURL;
+
+  } catch (error) {
+    console.error("BookZA submission error:", error);
+
+    showMessage(
+      error.message || "Something went wrong. Please try again."
+    );
+
+    button.disabled = false;
+    button.textContent = isFood
+      ? "Place Order via WhatsApp →"
+      : "Request Appointment via WhatsApp →";
+
+    submitting = false;
+  }
+});
+
+/* START */
+
+init();
+</script>
+
+</body>
+</html>
