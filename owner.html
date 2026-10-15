@@ -1943,7 +1943,98 @@ for (const order of data) {
 
     const status = document.createElement("p");
     status.textContent =
-        "Status: " + (order.status || "pending");
+        "Current status: " + (order.status || "pending");
+
+    const statusLabel = document.createElement("label");
+    statusLabel.textContent = "Update order status: ";
+    statusLabel.style.display = "block";
+    statusLabel.style.marginTop = "10px";
+
+    const statusSelect = document.createElement("select");
+    statusSelect.style.display = "block";
+    statusSelect.style.marginTop = "6px";
+    statusSelect.style.marginBottom = "10px";
+    statusSelect.style.padding = "10px";
+    statusSelect.style.width = "100%";
+
+    const allowedStatuses = [
+        "pending",
+        "confirmed",
+        "completed",
+        "cancelled"
+    ];
+
+    const currentStatus = order.status || "pending";
+
+    if (!allowedStatuses.includes(currentStatus)) {
+        allowedStatuses.push(currentStatus);
+    }
+
+    allowedStatuses.forEach(function (value) {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent =
+            value.charAt(0).toUpperCase() + value.slice(1);
+
+        if (value === currentStatus) {
+            option.selected = true;
+        }
+
+        statusSelect.appendChild(option);
+    });
+
+    statusLabel.appendChild(statusSelect);
+
+    const saveStatusButton = document.createElement("button");
+    saveStatusButton.type = "button";
+    saveStatusButton.textContent = "Save Status";
+
+    const statusMessage = document.createElement("p");
+    statusMessage.setAttribute("role", "status");
+
+    saveStatusButton.addEventListener("click", async function () {
+        const newStatus = statusSelect.value;
+
+        if (!allowedStatuses.includes(newStatus)) {
+            statusMessage.textContent = "Invalid order status.";
+            return;
+        }
+
+        saveStatusButton.disabled = true;
+        statusSelect.disabled = true;
+        statusMessage.textContent = "Saving status...";
+
+        const { data: updatedOrder, error: updateError } = await supa
+            .from("bookza_orders")
+            .update({ status: newStatus })
+            .eq("id", order.id)
+            .eq("business_id", currentBiz.id)
+            .select("id")
+            .maybeSingle();
+
+        if (updateError) {
+            statusMessage.textContent =
+                "Could not update status: " + updateError.message;
+
+            saveStatusButton.disabled = false;
+            statusSelect.disabled = false;
+            return;
+        }
+
+        if (!updatedOrder) {
+            statusMessage.textContent =
+                "Status was not updated. Check your permissions and try again.";
+
+            saveStatusButton.disabled = false;
+            statusSelect.disabled = false;
+            return;
+        }
+
+        statusMessage.textContent =
+            "Status updated to " + newStatus + ".";
+
+        await loadFoodOrders();
+    });
 
     row.append(
         customer,
@@ -1952,7 +2043,10 @@ for (const order of data) {
         itemsList,
         total,
         time,
-        status
+        status,
+        statusLabel,
+        saveStatusButton,
+        statusMessage
     );
 
     ordersList.appendChild(row);
