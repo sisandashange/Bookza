@@ -171,6 +171,8 @@
   const result = document.getElementById("result");
 
   let lastReference = "";
+let autoRefreshTimer = null;
+let isTracking = false;
 
   function money(amount) {
     return "R" + Number(amount).toFixed(2);
@@ -225,6 +227,11 @@
   }
 
   async function trackOrder(reference) {
+    if (isTracking) {
+      return;
+    }
+
+    isTracking = true;
     const cleanReference = reference.trim();
 
     const uuidPattern =
@@ -278,9 +285,10 @@
     } catch (error) {
       result.hidden = true;
       showMessage(error.message, true);
-    } finally {
+        } finally {
       trackButton.disabled = false;
       refreshButton.disabled = false;
+      isTracking = false;
     }
   }
 
@@ -294,6 +302,20 @@
       trackOrder(lastReference);
     }
   });
+
+  function startAutoRefresh() {
+    if (autoRefreshTimer) {
+      clearInterval(autoRefreshTimer);
+    }
+
+    autoRefreshTimer = setInterval(function () {
+      if (lastReference && !document.hidden && !isTracking) {
+        trackOrder(lastReference);
+      }
+    }, 30000);
+  }
+
+  startAutoRefresh();
 </script>
 </body>
 </html>
