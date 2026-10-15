@@ -8,204 +8,257 @@
 
     <style>
         * {
-            box-sizing: border-box;
-        }
+    box-sizing: border-box;
+}
 
-        body {
-            margin: 0;
-            padding: 20px;
-            background: #f5f5f5;
-            color: #111;
-            font-family: Arial, sans-serif;
-        }
+:root {
+    color-scheme: light;
+}
 
-        .container {
-            max-width: 850px;
-            margin: 0 auto;
-        }
+body {
+    margin: 0;
+    padding: 20px;
+    background: #f1f1f1;
+    color: #171717;
+    font-family: Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+}
 
-        header {
-            background: #111;
-            color: #fff;
-            padding: 22px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-        }
+.container {
+    max-width: 850px;
+    margin: 0 auto;
+}
 
-        header h1 {
-            margin: 0 0 8px;
-            font-size: 25px;
-            color: #fff;
-        }
+header {
+    background: #111;
+    color: #fff;
+    padding: 24px;
+    border-radius: 14px;
+    margin-bottom: 22px;
+}
 
-        header p {
-            margin: 0;
-            color: #ddd;
-        }
+header h1 {
+    margin: 0 0 5px;
+    font-size: 28px;
+    color: #fff;
+}
 
-        .card {
-            background: #fff;
-            color: #111;
-            border: 1px solid #ddd;
-            border-radius: 12px;
-            padding: 18px;
-            margin-bottom: 16px;
-            overflow-wrap: anywhere;
-        }
+header p {
+    margin: 0;
+    color: #ddd;
+    font-size: 15px;
+}
 
-        .card h2,
-        .card h3,
-        .card p,
-        .card strong,
-        .customer-name,
-        .customer-phone,
-        .summary {
-            color: #111;
-        }
+.card {
+    background: #fff;
+    color: #171717;
+    border: 1px solid #dedede;
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 18px;
+    overflow-wrap: anywhere;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.04);
+}
 
-        .muted {
-            color: #555;
-            line-height: 1.5;
-        }
+.card h2 {
+    margin-top: 0;
+    color: #111;
+    font-size: 22px;
+    line-height: 1.35;
+}
 
-        .card .muted {
-            color: #555;
-        }
+.card h3 {
+    color: #111;
+}
 
-        .customer-name {
-            margin-top: 0;
-            margin-bottom: 8px;
-            font-size: 21px;
-        }
+.card p {
+    color: #222;
+}
 
-        .customer-phone {
-            font-weight: bold;
-            margin-bottom: 14px;
-            overflow-wrap: anywhere;
-        }
+.muted {
+    color: #595959;
+    line-height: 1.6;
+}
 
-        .whatsapp-button {
-            display: block;
-            text-align: center;
-            background: #111;
-            color: #fff !important;
-            padding: 12px;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: bold;
-            margin: 12px 0;
-        }
+.customer-name {
+    margin-top: 0;
+    margin-bottom: 8px;
+    font-size: 23px;
+    font-weight: 700;
+    color: #111;
+}
 
-        .whatsapp-button:focus,
-        .whatsapp-button:hover {
-            background: #333;
-            color: #fff !important;
-        }
+.customer-phone {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 12px;
+    overflow-wrap: anywhere;
+}
 
-        .summary {
-            background: #f2f2f2;
-            color: #111;
-            border-radius: 8px;
-            padding: 12px;
-            margin: 14px 0;
-            line-height: 1.8;
-        }
+.whatsapp-button {
+    display: block;
+    width: 100%;
+    text-align: center;
+    background: #111;
+    color: #fff !important;
+    padding: 14px;
+    border-radius: 9px;
+    text-decoration: none;
+    font-weight: 700;
+    margin: 14px 0;
+    line-height: 1.4;
+}
 
-        .order {
-            border-top: 1px solid #ddd;
-            padding: 15px 0;
-        }
+.whatsapp-button:hover,
+.whatsapp-button:focus {
+    background: #333;
+    color: #fff !important;
+}
 
-        .order:last-child {
-            padding-bottom: 0;
-        }
+.summary {
+    background: #f5f5f5;
+    color: #171717;
+    border: 1px solid #e5e5e5;
+    border-radius: 10px;
+    padding: 15px;
+    margin: 16px 0;
+    line-height: 2;
+}
 
-        .order h3 {
-            margin: 0 0 10px;
-            color: #111;
-            font-size: 17px;
-        }
+.summary strong {
+    color: #111;
+}
 
-        .order p {
-            margin: 7px 0;
-            line-height: 1.5;
-            color: #222;
-        }
+.order {
+    border-top: 1px solid #dedede;
+    padding: 18px 0;
+}
 
-        .status {
-            display: inline-block;
-            padding: 5px 9px;
-            border: 1px solid #ccc;
-            border-radius: 20px;
-            font-size: 13px;
-            font-weight: bold;
-            text-transform: capitalize;
-            color: #111;
-            background: #f5f5f5;
-        }
+.order:last-child {
+    padding-bottom: 0;
+}
 
-        button {
-            width: 100%;
-            padding: 13px;
-            border: none;
-            border-radius: 8px;
-            background: #111;
-            color: #fff;
-            font-size: 16px;
-            cursor: pointer;
-            margin-top: 10px;
-        }
+.order h3 {
+    margin: 0 0 12px;
+    font-size: 16px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
 
-        button:disabled {
-            opacity: 0.6;
-            cursor: wait;
-        }
+.order p {
+    margin: 9px 0;
+    line-height: 1.6;
+    color: #333;
+}
 
-        .back-button {
-            background: #fff;
-            color: #111;
-            border: 1px solid #111;
-            margin-bottom: 20px;
-        }
+.order p strong {
+    color: #111;
+}
 
-        .back-button:hover {
-            background: #eee;
-        }
+.status {
+    display: inline-block;
+    padding: 5px 11px;
+    border: 1px solid #ccc;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: capitalize;
+    color: #111;
+    background: #f5f5f5;
+}
 
-        .message {
-            padding: 14px;
-            border-radius: 8px;
-            background: #fff;
-            color: #111;
-            border: 1px solid #ddd;
-            line-height: 1.5;
-            margin-bottom: 15px;
-            overflow-wrap: anywhere;
-        }
+button {
+    display: block;
+    width: 100%;
+    padding: 14px;
+    border: 1px solid #111;
+    border-radius: 9px;
+    background: #111;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 10px;
+    line-height: 1.4;
+}
 
-        .message.error {
-            color: #900;
-            background: #fff;
-            border-color: #e0aaaa;
-        }
+button:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
 
-        .hidden {
-            display: none;
-        }
+.back-button {
+    background: #fff;
+    color: #111;
+    border: 1px solid #bbb;
+    margin-bottom: 20px;
+}
 
-        @media (max-width: 480px) {
-            body {
-                padding: 12px;
-            }
+.back-button:hover {
+    background: #eaeaea;
+}
 
-            header {
-                padding: 18px;
-            }
+.message {
+    padding: 15px;
+    border-radius: 10px;
+    background: #fff;
+    color: #171717;
+    border: 1px solid #ddd;
+    line-height: 1.6;
+    margin-bottom: 18px;
+    overflow-wrap: anywhere;
+}
 
-            .card {
-                padding: 14px;
-            }
-        }
+.message.error {
+    color: #900;
+    background: #fff;
+    border-color: #e0aaaa;
+}
+
+.hidden {
+    display: none;
+}
+
+@media (max-width: 480px) {
+    body {
+        padding: 12px;
+        font-size: 14px;
+    }
+
+    header {
+        padding: 20px;
+        border-radius: 12px;
+        margin-bottom: 16px;
+    }
+
+    header h1 {
+        font-size: 25px;
+    }
+
+    .card {
+        padding: 15px;
+        border-radius: 12px;
+        margin-bottom: 14px;
+    }
+
+    .customer-name {
+        font-size: 21px;
+    }
+
+    .summary {
+        padding: 12px;
+    }
+
+    .order {
+        padding: 15px 0;
+    }
+
+    .whatsapp-button,
+    button {
+        padding: 13px;
+    }
+}
     </style>
 </head>
 
