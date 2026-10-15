@@ -2073,6 +2073,26 @@ for (const order of data) {
 
 }
 
+/* =====================================
+   OPEN CUSTOMER HISTORY
+===================================== */
+
+function openCustomerHistory() {
+    if (!user) {
+        alert("Please log in first.");
+        return;
+    }
+
+    if (!currentBiz) {
+        alert("Please select a business first.");
+        return;
+    }
+
+    window.location.href =
+        "customers.html?business=" +
+        encodeURIComponent(currentBiz.id);
+}
+
 
 /* =====================================
    BUTTON EVENTS
