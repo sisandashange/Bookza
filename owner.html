@@ -390,55 +390,76 @@ let businesses = [];
 let authBusy = false;
 
 async function testOrderIsolation() {
-const dukeBusinessId = prompt(
-"Enter Duke's shisanyama business ID for the security test:"
-);
-
-if (!dukeBusinessId) {
-    alert("Test cancelled.");
-    return;
-}
-
-try {
-    const { data: sessionData } = await supa.auth.getSession();
-    const session = sessionData?.session;
-
-    if (!session) {
-        alert("No logged-in session found.");
-        return;
-    }
-
-    const { data, error, count } = await supa
-        .from("bookza_orders")
-        .select("id, business_id", { count: "exact" })
-        .eq("business_id", dukeBusinessId);
-
-    if (error) {
-        console.log("Security test result:", error.message);
-        alert(
-            "The request was rejected or failed.\n" +
-            "Check the browser console for details."
-        );
-        return;
-    }
-
-    alert(
-        "Security test completed.\n" +
-        "Orders returned: " + (count ?? data?.length ?? 0)
+    const dukeBusinessId = prompt(
+        "Enter Duke's shisanyama business ID:"
     );
 
-    console.log("Order isolation test:", {
-        signedInUser: session.user.id,
-        returnedOrders: data?.length ?? 0,
-        orderIds: data?.map(order => order.id)
-    });
-} catch (error) {
-    console.error("Security test error:", error);
-    alert("Test failed. Check the browser console.");
-}
+    if (!dukeBusinessId) {
+        alert("Test cancelled.");
+        return;
+    }
 
-}
+    try {
+        const { data: sessionData, error: sessionError } =
+            await supa.auth.getSession();
 
+        if (sessionError || !sessionData?.session) {
+            alert("No logged-in session found.");
+            return;
+        }
+
+        const ordersResult = await supa
+            .from("bookza_orders")
+            .select("id", { count: "exact", head: true })
+            .eq("business_id", dukeBusinessId);
+
+        if (ordersResult.error) {
+            alert("Orders test failed. Check the console.");
+            console.error(ordersResult.error);
+            return;
+        }
+
+        const itemsResult = await supa
+            .from("bookza_order_items")
+            .select("id", { count: "exact", head: true });
+
+        if (itemsResult.error) {
+            alert("Order items test failed. Check the console.");
+            console.error(itemsResult.error);
+            return;
+        }
+
+        const customersResult = await supa
+            .from("bookza_customers")
+            .select("id", { count: "exact", head: true });
+
+        if (customersResult.error) {
+            alert("Customer records test failed. Check the console.");
+            console.error(customersResult.error);
+            return;
+        }
+
+        const results = {
+            dukeOrders: ordersResult.count ?? 0,
+            accessibleOrderItems: itemsResult.count ?? 0,
+            accessibleCustomerRecords: customersResult.count ?? 0
+        };
+
+        console.log("BookZA security test:", results);
+
+        alert(
+            "Security test completed.\n\n" +
+            "Duke's orders accessible: " + results.dukeOrders +
+            "\nOrder items accessible: " + results.accessibleOrderItems +
+            "\nCustomer records accessible: " +
+            results.accessibleCustomerRecords
+        );
+
+    } catch (error) {
+        console.error("Security test error:", error);
+        alert("Test failed. Check the console.");
+    }
+}
 
 /* =====================================
    ELEMENT HELPERS
