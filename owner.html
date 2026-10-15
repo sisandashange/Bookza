@@ -1029,7 +1029,22 @@ async function delService(id, name) {
 ===================================== */
 
 async function loadBookings() {
-    if (!currentBiz) return;
+    if (!currentBiz) {
+        el("bookingsList").textContent =
+            "Select a business to view appointments.";
+        return;
+    }
+
+    // Food businesses should not display food orders
+    // in the Salon Appointments section.
+    if (currentBiz.type === "shisanyama") {
+        el("bookingsList").textContent =
+            "This is a shisanyama business. Its food orders appear in the Food Orders section.";
+        return;
+    }
+
+    el("bookingsList").textContent =
+        "Loading salon appointments...";
 
     const { data, error } = await supa
         .from("bookings")
@@ -1048,7 +1063,7 @@ async function loadBookings() {
 
     if (!data || data.length === 0) {
         el("bookingsList").textContent =
-            "No appointments found.";
+            "No salon appointments found.";
         return;
     }
 
@@ -1064,14 +1079,17 @@ async function loadBookings() {
 
         const customer = document.createElement("p");
         customer.textContent =
-            "Customer: " + (booking.customer_name || "Unknown") +
-            " · " + (booking.customer_phone || "");
+            "Customer: " +
+            (booking.customer_name || "Unknown") +
+            " · " +
+            (booking.customer_phone || "");
 
         const status = document.createElement("p");
         status.textContent =
             "Status: " + (booking.status || "pending");
 
         row.append(details, customer, status);
+
         el("bookingsList").appendChild(row);
     });
 }
