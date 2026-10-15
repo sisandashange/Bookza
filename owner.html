@@ -1020,6 +1020,97 @@ clearOfferButton.textContent = "Remove Special Offer";
 clearOfferButton.className = "secondary";
 row.appendChild(clearOfferButton);
 
+saveOfferButton.addEventListener("click", async () => {
+    const specialPrice = Number(specialPriceInput.value);
+    const startValue = offerStartInput.value;
+    const endValue = offerEndInput.value;
+
+    if (
+        specialPriceInput.value.trim() === "" ||
+        !Number.isInteger(specialPrice) ||
+        specialPrice < 0 ||
+        specialPrice >= Number(service.price)
+    ) {
+        showMessage(
+            "Enter a whole-number special price lower than the original price."
+        );
+        return;
+    }
+
+    if (!startValue || !endValue) {
+        showMessage("Please enter both the offer start and end dates.");
+        return;
+    }
+
+    const startDate = new Date(startValue);
+    const endDate = new Date(endValue);
+
+    if (
+        Number.isNaN(startDate.getTime()) ||
+        Number.isNaN(endDate.getTime()) ||
+        endDate <= startDate
+    ) {
+        showMessage("The offer end date must be after its start date.");
+        return;
+    }
+
+    saveOfferButton.disabled = true;
+    saveOfferButton.textContent = "Saving...";
+
+    try {
+        const { error } = await supabase
+            .from("services")
+            .update({
+                special_price: specialPrice,
+                special_start: startDate.toISOString(),
+                special_end: endDate.toISOString()
+            })
+            .eq("id", service.id)
+            .eq("business_id", currentBiz.id);
+
+        if (error) throw error;
+
+        showMessage("Special offer saved successfully.");
+        await loadServices();
+    } catch (error) {
+        console.error("Save special offer error:", error);
+        showMessage("Could not save the special offer: " + error.message);
+        saveOfferButton.disabled = false;
+        saveOfferButton.textContent = "Save Special Offer";
+    }
+});
+
+clearOfferButton.addEventListener("click", async () => {
+    if (!confirm("Remove the special offer for this item?")) {
+        return;
+    }
+
+    clearOfferButton.disabled = true;
+    clearOfferButton.textContent = "Removing...";
+
+    try {
+        const { error } = await supabase
+            .from("services")
+            .update({
+                special_price: null,
+                special_start: null,
+                special_end: null
+            })
+            .eq("id", service.id)
+            .eq("business_id", currentBiz.id);
+
+        if (error) throw error;
+
+        showMessage("Special offer removed successfully.");
+        await loadServices();
+    } catch (error) {
+        console.error("Remove special offer error:", error);
+        showMessage("Could not remove the offer: " + error.message);
+        clearOfferButton.disabled = false;
+        clearOfferButton.textContent = "Remove Special Offer";
+    }
+});
+
     // Find photos belonging to this service.
     const servicePhotos = (photoRows || []).filter(
         function (photo) {
