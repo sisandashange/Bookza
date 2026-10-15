@@ -1058,15 +1058,34 @@ saveOfferButton.addEventListener("click", async () => {
     saveOfferButton.textContent = "Saving...";
 
     try {
-        const { error } = await supabase
-            .from("services")
-            .update({
-                special_price: specialPrice,
-                special_start: startDate.toISOString(),
-                special_end: endDate.toISOString()
-            })
-            .eq("id", service.id)
-            .eq("business_id", currentBiz.id);
+        const { data, error } = await supabase
+    .from("services")
+    .update({
+        special_price: specialPrice,
+        special_start: startDate.toISOString(),
+        special_end: endDate.toISOString()
+    })
+    .eq("id", service.id)
+    .eq("business_id", currentBiz.id)
+    .select("id, name, price, special_price, special_start, special_end")
+    .maybeSingle();
+
+console.log("Special offer save result:", {
+    data,
+    error,
+    serviceId: service.id,
+    businessId: currentBiz.id
+});
+
+if (error) {
+    throw error;
+}
+
+if (!data) {
+    throw new Error(
+        "No service was updated. Check the selected business and owner permissions."
+    );
+}
 
         if (error) throw error;
 
