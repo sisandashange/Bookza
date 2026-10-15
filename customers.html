@@ -519,52 +519,35 @@ async function loadCustomerHistory() {
 
             const firstOrder = customer.orders[0];
 
-            let html = `
-                <h2 class="customer-name">
-                    ${escapeHtml(customer.name)}
-                </h2>
+            const whatsappPhone = String(customer.phone || "").replace(/\D/g, "");
+const whatsappButton = /^27\d{9}$/.test(whatsappPhone)
+? "<a href="https://wa.me/${whatsappPhone}?text=${encodeURIComponent( "Hello " + customer.name + ", this is " + currentBusiness.name + " contacting you through BookZA. Thank you for supporting our business!" )}" target="_blank" rel="noopener noreferrer" style=" display: block; text-align: center; background: #111; color: #fff; padding: 12px; border-radius: 8px; text-decoration: none; font-weight: bold; margin: 12px 0; " >Contact Customer on WhatsApp</a>"
+: "<p class="muted">WhatsApp contact unavailable. Please check the customer's phone number.</p>";
 
-                <div class="customer-phone">
-    Phone: ${escapeHtml(customer.phone)}
-</div><a
-href="https://wa.me/${customer.phone.replace(/\D/g, '')}?text=${encodeURIComponent(
-"Hello " + customer.name +
-", this is " + currentBusiness.name +
-" contacting you through BookZA. Thank you for supporting our business!"
-)}"
-target="_blank"
-rel="noopener noreferrer"
-style="
-display: block;
-text-align: center;
-background: #111;
-color: white;
-padding: 12px;
-border-radius: 8px;
-text-decoration: none;
-font-weight: bold;
-margin: 12px 0;
-"
+        let html = `
+            <h2 class="customer-name">
+                ${escapeHtml(customer.name)}
+            </h2>
 
-«»
+            <div class="customer-phone">
+                Phone: ${escapeHtml(customer.phone)}
+            </div>
 
-Contact Customer on WhatsApp
+            ${whatsappButton}
 
-</a>
+            <div class="summary">
+                <strong>Total orders:</strong>
+                ${customer.orders.length}<br>
 
-                <div class="summary">
-                    <strong>Total orders:</strong>
-                    ${customer.orders.length}<br>
+                <strong>Total order value:</strong>
+                ${escapeHtml(formatRand(totalSpent))}<br>
 
-                    <strong>Total order value:</strong>
-                    ${escapeHtml(formatRand(totalSpent))}<br>
+                <strong>Most recent order:</strong>
+                ${escapeHtml(formatDate(firstOrder.created_at))}
+            </div>
 
-                    <strong>Most recent order:</strong>
-                    ${escapeHtml(formatDate(firstOrder.created_at))}
-                </div>
-
-                <h3>Previous Orders</h3>
-            `;
+            <h3>Previous Orders</h3>
+        `;
 
             customer.orders.forEach(order => {
                 const orderItems = itemsByOrder[order.id] || [];
