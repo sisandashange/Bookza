@@ -1058,7 +1058,7 @@ saveOfferButton.addEventListener("click", async () => {
     saveOfferButton.textContent = "Saving...";
 
     try {
-        const saveRequest = supabase
+        const saveRequest = supa
     .from("services")
     .update({
         special_price: specialPrice,
@@ -1117,7 +1117,7 @@ clearOfferButton.addEventListener("click", async () => {
     clearOfferButton.textContent = "Removing...";
 
     try {
-        const { error } = await supabase
+        const { error } = await supa
             .from("services")
             .update({
                 special_price: null,
