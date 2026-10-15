@@ -26,7 +26,7 @@
 
         header {
             background: #111;
-            color: white;
+            color: #fff;
             padding: 22px;
             border-radius: 12px;
             margin-bottom: 20px;
@@ -35,6 +35,7 @@
         header h1 {
             margin: 0 0 8px;
             font-size: 25px;
+            color: #fff;
         }
 
         header p {
@@ -43,7 +44,8 @@
         }
 
         .card {
-            background: white;
+            background: #fff;
+            color: #111;
             border: 1px solid #ddd;
             border-radius: 12px;
             padding: 18px;
@@ -51,9 +53,23 @@
             overflow-wrap: anywhere;
         }
 
+        .card h2,
+        .card h3,
+        .card p,
+        .card strong,
+        .customer-name,
+        .customer-phone,
+        .summary {
+            color: #111;
+        }
+
         .muted {
-            color: #666;
+            color: #555;
             line-height: 1.5;
+        }
+
+        .card .muted {
+            color: #555;
         }
 
         .customer-name {
@@ -65,10 +81,30 @@
         .customer-phone {
             font-weight: bold;
             margin-bottom: 14px;
+            overflow-wrap: anywhere;
+        }
+
+        .whatsapp-button {
+            display: block;
+            text-align: center;
+            background: #111;
+            color: #fff !important;
+            padding: 12px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            margin: 12px 0;
+        }
+
+        .whatsapp-button:focus,
+        .whatsapp-button:hover {
+            background: #333;
+            color: #fff !important;
         }
 
         .summary {
             background: #f2f2f2;
+            color: #111;
             border-radius: 8px;
             padding: 12px;
             margin: 14px 0;
@@ -86,11 +122,14 @@
 
         .order h3 {
             margin: 0 0 10px;
+            color: #111;
+            font-size: 17px;
         }
 
         .order p {
             margin: 7px 0;
             line-height: 1.5;
+            color: #222;
         }
 
         .status {
@@ -101,6 +140,8 @@
             font-size: 13px;
             font-weight: bold;
             text-transform: capitalize;
+            color: #111;
+            background: #f5f5f5;
         }
 
         button {
@@ -109,7 +150,7 @@
             border: none;
             border-radius: 8px;
             background: #111;
-            color: white;
+            color: #fff;
             font-size: 16px;
             cursor: pointer;
             margin-top: 10px;
@@ -121,23 +162,30 @@
         }
 
         .back-button {
-            background: white;
+            background: #fff;
             color: #111;
             border: 1px solid #111;
             margin-bottom: 20px;
         }
 
+        .back-button:hover {
+            background: #eee;
+        }
+
         .message {
             padding: 14px;
             border-radius: 8px;
-            background: white;
+            background: #fff;
+            color: #111;
             border: 1px solid #ddd;
             line-height: 1.5;
             margin-bottom: 15px;
+            overflow-wrap: anywhere;
         }
 
-        .error {
-            color: #a00000;
+        .message.error {
+            color: #900;
+            background: #fff;
             border-color: #e0aaaa;
         }
 
@@ -194,7 +242,7 @@
         </button>
     </div>
 
-    <div id="message" class="message">
+    <div id="message" class="message" role="status" aria-live="polite">
         Checking your access...
     </div>
 
@@ -227,7 +275,6 @@ const db = window.supabase.createClient(
 ===================================== */
 
 const params = new URLSearchParams(window.location.search);
-
 const businessId = params.get("business");
 
 let currentUser = null;
@@ -291,22 +338,83 @@ function goBack() {
 }
 
 /* =====================================
+   CREATE WHATSAPP BUTTON
+===================================== */
+
+function createWhatsAppButton(customer) {
+    const phone = String(customer.phone || "")
+        .replace(/\D/g, "");
+
+    /*
+      South African international mobile format:
+      27 followed by nine digits.
+
+      Invalid or incomplete numbers do not receive
+      a WhatsApp link.
+    */
+
+    if (!/^27\d{9}$/.test(phone)) {
+        return `
+            <p class="muted">
+                WhatsApp contact unavailable.
+                Please check this customer's phone number.
+            </p>
+        `;
+    }
+
+    const customerName = String(
+        customer.name || "Customer"
+    );
+
+    const businessName = String(
+        currentBusiness.name || "our business"
+    );
+
+    const message =
+        "Hello " + customerName +
+        "! This is " + businessName +
+        ", contacting you through BookZA. " +
+        "Thank you for choosing our business! " +
+        "We appreciate your support. " +
+        "If you have any questions or need assistance " +
+        "with your order or appointment, please feel free " +
+        "to message us. We look forward to serving you again!";
+
+    const href =
+        "https://wa.me/" + phone +
+        "?text=" + encodeURIComponent(message);
+
+    return `
+        <a
+            class="whatsapp-button"
+            href="${href}"
+            target="_blank"
+            rel="noopener noreferrer"
+        >
+            Contact Customer on WhatsApp
+        </a>
+    `;
+}
+
+/* =====================================
    VERIFY OWNER ACCESS
 ===================================== */
 
 async function initialisePage() {
     try {
         if (!businessId) {
+            document.getElementById("businessName").textContent =
+                "Business not selected";
+
             showMessage(
                 "No business was selected. Return to the dashboard and open Customer History again.",
                 true
             );
 
-            document.getElementById("businessName").textContent =
-                "Business not selected";
-
             return;
         }
+
+        showMessage("Checking your access...");
 
         const {
             data: sessionData,
@@ -321,7 +429,7 @@ async function initialisePage() {
 
         if (!currentUser) {
             showMessage(
-                "You must log in to view customer history.",
+                "You must log in to view customer history. Return to the owner dashboard and log in first.",
                 true
             );
 
@@ -329,9 +437,9 @@ async function initialisePage() {
         }
 
         /*
-          The business must belong to the currently
-          authenticated user. A URL parameter alone
-          does not grant access.
+          A URL parameter does not grant access.
+          The selected business must belong to the
+          currently authenticated user.
         */
 
         const {
@@ -371,7 +479,8 @@ async function initialisePage() {
         console.error("Customer history access error:", error);
 
         showMessage(
-            "We could not verify your access. Please check your connection and try again.",
+            "We could not verify your access. " +
+            (error?.message || "Please check your connection and try again."),
             true
         );
     }
@@ -388,7 +497,8 @@ async function loadCustomerHistory() {
 
     if (!currentUser || !currentBusiness) {
         showMessage(
-            "Your business access has not been verified. Please reload the page.",
+            "Your business access has not been verified. " +
+            "Please return to the owner dashboard and open Customer History again.",
             true
         );
 
@@ -397,8 +507,11 @@ async function loadCustomerHistory() {
 
     loading = true;
 
-    const refreshButton = document.getElementById("refreshButton");
-    const customerList = document.getElementById("customerList");
+    const refreshButton =
+        document.getElementById("refreshButton");
+
+    const customerList =
+        document.getElementById("customerList");
 
     refreshButton.disabled = true;
     refreshButton.textContent = "Loading...";
@@ -408,9 +521,9 @@ async function loadCustomerHistory() {
 
     try {
         /*
-          Fetch orders for this business only.
-          Database Row Level Security must also enforce
-          that the signed-in owner can read these orders.
+          Fetch orders for the verified business.
+          Supabase Row Level Security must also restrict
+          which records the authenticated owner can read.
         */
 
         const {
@@ -437,9 +550,7 @@ async function loadCustomerHistory() {
         }
 
         /*
-          Load item snapshots for these orders.
-          Each item belongs to an order already retrieved
-          for the verified business.
+          Fetch item snapshots belonging to these orders.
         */
 
         const orderIds = orders.map(order => order.id);
@@ -470,14 +581,16 @@ async function loadCustomerHistory() {
 
         /*
           Group orders by customer ID.
-          For older orders without a customer ID, use
-          the phone number as a fallback when available.
+          Older orders without a customer ID fall back
+          to their phone number.
         */
 
         const customers = new Map();
 
         orders.forEach(order => {
-            const phone = String(order.customer_phone || "").trim();
+            const phone = String(
+                order.customer_phone || ""
+            ).trim();
 
             const key = order.customer_id
                 ? "id:" + order.customer_id
@@ -488,7 +601,7 @@ async function loadCustomerHistory() {
             if (!customers.has(key)) {
                 customers.set(key, {
                     name: order.customer_name || "Customer",
-                    phone: phone || "Not provided",
+                    phone: phone || "",
                     orders: []
                 });
             }
@@ -496,11 +609,14 @@ async function loadCustomerHistory() {
             const customer = customers.get(key);
 
             if (
-                order.created_at &&
-                customer.orders.length === 0
+                (!customer.name || customer.name === "Customer") &&
+                order.customer_name
             ) {
-                customer.name =
-                    order.customer_name || customer.name;
+                customer.name = order.customer_name;
+            }
+
+            if (!customer.phone && phone) {
+                customer.phone = phone;
             }
 
             customer.orders.push(order);
@@ -513,44 +629,46 @@ async function loadCustomerHistory() {
             card.className = "card";
 
             const totalSpent = customer.orders.reduce(
-                (sum, order) => sum + Number(order.total_amount || 0),
+                (sum, order) =>
+                    sum + Number(order.total_amount || 0),
                 0
             );
 
+            /*
+              Orders are sorted newest first by the database,
+              so the first order is the most recent one.
+            */
+
             const firstOrder = customer.orders[0];
 
-            const whatsappPhone = String(customer.phone || "").replace(/\D/g, "");
-const whatsappButton = /^27\d{9}$/.test(whatsappPhone)
-? "<a href="https://wa.me/${whatsappPhone}?text=${encodeURIComponent( "Hello " + customer.name + ", this is " + currentBusiness.name + " contacting you through BookZA. Thank you for supporting our business!" )}" target="_blank" rel="noopener noreferrer" style=" display: block; text-align: center; background: #111; color: #fff; padding: 12px; border-radius: 8px; text-decoration: none; font-weight: bold; margin: 12px 0; " >Contact Customer on WhatsApp</a>"
-: "<p class="muted">WhatsApp contact unavailable. Please check the customer's phone number.</p>";
+            let html = `
+                <h2 class="customer-name">
+                    ${escapeHtml(customer.name)}
+                </h2>
 
-        let html = `
-            <h2 class="customer-name">
-                ${escapeHtml(customer.name)}
-            </h2>
+                <div class="customer-phone">
+                    Phone: ${escapeHtml(customer.phone || "Not provided")}
+                </div>
 
-            <div class="customer-phone">
-                Phone: ${escapeHtml(customer.phone)}
-            </div>
+                ${createWhatsAppButton(customer)}
 
-            ${whatsappButton}
+                <div class="summary">
+                    <strong>Total orders:</strong>
+                    ${customer.orders.length}<br>
 
-            <div class="summary">
-                <strong>Total orders:</strong>
-                ${customer.orders.length}<br>
+                    <strong>Total order value:</strong>
+                    ${escapeHtml(formatRand(totalSpent))}<br>
 
-                <strong>Total order value:</strong>
-                ${escapeHtml(formatRand(totalSpent))}<br>
+                    <strong>Most recent order:</strong>
+                    ${escapeHtml(formatDate(firstOrder.created_at))}
+                </div>
 
-                <strong>Most recent order:</strong>
-                ${escapeHtml(formatDate(firstOrder.created_at))}
-            </div>
-
-            <h3>Previous Orders</h3>
-        `;
+                <h3>Previous Orders</h3>
+            `;
 
             customer.orders.forEach(order => {
-                const orderItems = itemsByOrder[order.id] || [];
+                const orderItems =
+                    itemsByOrder[order.id] || [];
 
                 let itemsHtml = "";
 
@@ -634,19 +752,22 @@ const whatsappButton = /^27\d{9}$/.test(whatsappPhone)
         console.error("Customer history loading error:", error);
 
         showMessage(
-            "Customer history could not be loaded. This may be caused by a database permission or Row Level Security policy. Check the error before changing any database settings.",
+            "Customer history could not be loaded. " +
+            (error?.message ||
+            "Check your database permissions and connection."),
             true
         );
 
     } finally {
         loading = false;
         refreshButton.disabled = false;
-        refreshButton.textContent = "Refresh Customer History";
+        refreshButton.textContent =
+            "Refresh Customer History";
     }
 }
 
 /* =====================================
-   START
+   START PAGE
 ===================================== */
 
 initialisePage();
