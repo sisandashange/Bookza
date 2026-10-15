@@ -400,10 +400,32 @@ input:focus, select:focus {
         Loading...
       </button>
 
-    </form>
-  </section>
+    </form><section id="orderConfirmation" hidden
+  style="margin-top:20px;padding:18px;border:1px solid #222;border-radius:12px;">
+
+  <h2 id="confirmationTitle">Request saved successfully!</h2>
+
+  <p id="confirmationReference"></p>
+
+  <div id="confirmationDetails"></div>
+
+  <p id="confirmationTotal"
+    style="font-size:18px;font-weight:bold;"></p>
+
+  <p id="confirmationSchedule"></p>
+
+  <button id="sendConfirmationWhatsApp" class="btn" type="button">
+    Send Details to Business via WhatsApp
+  </button>
 
   <p class="muted">
+    Your request is saved. Send the prepared WhatsApp message to notify
+    the business and confirm availability or collection arrangements.
+  </p>
+
+</section>
+
+  </section>  <p class="muted">
     Your order is not complete until it has been saved successfully
     and you have sent the prepared WhatsApp message to the business.
   </p>
