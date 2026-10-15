@@ -1,36 +1,685 @@
 <!DOCTYPE html>
-<html><head><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>BookZA - Salons & Shisa-Nyama in Durban</title>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>BookZA | Book Local. Order Ahead.</title>
+
+<meta name="description"
+content="Discover local businesses, order food ahead and book salon appointments with BookZA.">
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <style>
-*{box-sizing:border-box}body{margin:0;font-family:sans-serif;background:#f8fafc}
-.header{background:#0f172a;color:white;padding:20px;text-align:center}
-.filters{display:flex;gap:10px;padding:15px;overflow:auto}
-.filter{padding:10px 18px;border-radius:20px;border:1px solid #ddd;background:white;white-space:nowrap;cursor:pointer}
-.filter.active{background:#0f172a;color:white}
-.search{margin:0 15px;padding:14px;width:calc(100% - 30px);border-radius:10px;border:1px solid #ddd}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:15px}
-.card{background:white;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08);cursor:pointer}
-.card img{width:100%;height:120px;object-fit:cover}
-.card-body{padding:10px}
-.badge{font-size:11px;padding:3px 8px;border-radius:10px;background:#e2e8f0}
-.badge.food{background:#fef3c7}.badge.salon{background:#dbeafe}
-</style></head><body>
-<div class="header"><h1 style="margin:0">BookZA</h1><p>Book salons & order shisa-nyama in Umlazi</p></div>
-<input id="search" class="search" placeholder="Search salon or shisa-nyama..." oninput="render()">
-<div class="filters">
-<div class="filter active" onclick="setFilter('all',this)">All</div>
-<div class="filter" onclick="setFilter('salon',this)">💈 Salons & Barbers</div>
-<div class="filter" onclick="setFilter('shisanyama',this)">🔥 Shisa-Nyama</div>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #fafafa;
+  color: #111;
+}
+
+/* HEADER */
+
+.header {
+  background: white;
+  border-bottom: 1px solid #eee;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.logo {
+  font-size: 27px;
+  font-weight: 900;
+  letter-spacing: -1px;
+}
+
+.logo span {
+  color: #777;
+}
+
+.menu-btn {
+  background: #111;
+  color: white;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+/* HERO */
+
+.hero {
+  background: #111;
+  color: white;
+  padding: 42px 20px;
+  text-align: center;
+}
+
+.hero h1 {
+  font-size: 32px;
+  line-height: 1.2;
+  margin: 0 0 14px;
+}
+
+.hero p {
+  color: #ccc;
+  font-size: 15px;
+  line-height: 1.6;
+  margin-bottom: 25px;
+}
+
+.hero-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.hero-buttons button {
+  border: none;
+  border-radius: 9px;
+  padding: 13px 16px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.btn-white {
+  background: white;
+  color: black;
+}
+
+.btn-outline {
+  background: transparent;
+  color: white;
+  border: 1px solid white !important;
+}
+
+/* CONTENT */
+
+.container {
+  max-width: 1100px;
+  margin: auto;
+  padding: 24px 15px;
+}
+
+.section-title {
+  font-size: 23px;
+  margin: 0 0 8px;
+}
+
+.section-subtitle {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 20px;
+}
+
+/* SEARCH */
+
+.search {
+  width: 100%;
+  padding: 15px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  font-size: 15px;
+  outline: none;
+  background: white;
+}
+
+.search:focus {
+  border-color: black;
+}
+
+/* FILTERS */
+
+.filters {
+  display: flex;
+  gap: 9px;
+  overflow-x: auto;
+  padding: 18px 0;
+  scrollbar-width: none;
+}
+
+.filters::-webkit-scrollbar {
+  display: none;
+}
+
+.filter {
+  padding: 11px 17px;
+  border-radius: 25px;
+  border: 1px solid #ddd;
+  background: white;
+  white-space: nowrap;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.filter.active {
+  background: black;
+  color: white;
+  border-color: black;
+}
+
+/* BUSINESS GRID */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+.card {
+  background: white;
+  border: 1px solid #eee;
+  border-radius: 14px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform .2s;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+}
+
+.card img {
+  width: 100%;
+  height: 145px;
+  object-fit: cover;
+  background: #eee;
+}
+
+.card-body {
+  padding: 13px;
+}
+
+.badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: bold;
+  padding: 6px 9px;
+  border-radius: 20px;
+  background: #f1f1f1;
+}
+
+.card h3 {
+  font-size: 16px;
+  margin: 10px 0 7px;
+}
+
+.location {
+  color: #777;
+  font-size: 12px;
+  margin: 0 0 14px;
+}
+
+.card-button {
+  width: 100%;
+  background: black;
+  color: white;
+  border: none;
+  padding: 11px;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+/* BUSINESS CTA */
+
+.business-cta {
+  background: #111;
+  color: white;
+  text-align: center;
+  padding: 35px 20px;
+  border-radius: 15px;
+  margin-top: 35px;
+}
+
+.business-cta h2 {
+  margin-top: 0;
+}
+
+.business-cta p {
+  color: #ccc;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.business-cta button {
+  background: white;
+  color: black;
+  border: none;
+  padding: 13px 22px;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+/* FOOTER */
+
+.footer {
+  text-align: center;
+  padding: 30px 15px;
+  color: #777;
+  font-size: 12px;
+}
+
+/* MENU */
+
+.menu-panel {
+  display: none;
+  position: absolute;
+  top: 65px;
+  right: 15px;
+  background: white;
+  border: 1px solid #eee;
+  border-radius: 12px;
+  padding: 10px;
+  width: 190px;
+  box-shadow: 0 8px 25px rgba(0,0,0,.12);
+  z-index: 100;
+}
+
+.menu-panel.open {
+  display: block;
+}
+
+.menu-panel a {
+  display: block;
+  padding: 13px;
+  color: #111;
+  text-decoration: none;
+  font-size: 14px;
+  border-radius: 7px;
+}
+
+.menu-panel a:hover {
+  background: #f5f5f5;
+}
+
+/* DESKTOP */
+
+@media(min-width: 700px) {
+  .grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .hero h1 {
+    font-size: 45px;
+  }
+
+  .card img {
+    height: 200px;
+  }
+}
+
+@media(max-width: 360px) {
+  .hero-buttons {
+    flex-direction: column;
+  }
+
+  .card img {
+    height: 115px;
+  }
+
+  .card-body {
+    padding: 10px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<!-- HEADER -->
+
+<header class="header">
+
+  <div class="logo">
+    Book<span>ZA</span>
+  </div>
+
+  <button
+    class="menu-btn"
+    onclick="toggleMenu()"
+    aria-label="Open menu">
+    ☰
+  </button>
+
+</header>
+
+<div id="menuPanel" class="menu-panel">
+
+  <a href="index.html">🏠 Home</a>
+
+  <a href="#businesses" onclick="closeMenu()">
+    🔎 Explore Businesses
+  </a>
+
+  <a href="dashboard.html">
+    🏪 Business Dashboard
+  </a>
+
 </div>
-<div id="grid" class="grid">Loading...</div>
+
+<!-- HERO -->
+
+<section class="hero">
+
+  <h1>
+    Book Local.<br>
+    Order Ahead.
+  </h1>
+
+  <p>
+    Discover your favourite local businesses.
+    Order delicious food or book your next
+    appointment without the queue.
+  </p>
+
+  <div class="hero-buttons">
+
+    <button
+      class="btn-white"
+      onclick="quickFilter('shisanyama')">
+      🔥 Order Food
+    </button>
+
+    <button
+      class="btn-outline"
+      onclick="quickFilter('salon')">
+      💈 Book Appointment
+    </button>
+
+  </div>
+
+</section>
+
+<!-- BUSINESSES -->
+
+<main class="container" id="businesses">
+
+  <h2 class="section-title">
+    Explore Businesses
+  </h2>
+
+  <p class="section-subtitle">
+    Find great local spots near you.
+  </p>
+
+  <input
+    id="search"
+    class="search"
+    type="search"
+    placeholder="🔎 Search businesses or locations..."
+    oninput="render()"
+  >
+
+  <div class="filters">
+
+    <button
+      class="filter active"
+      data-filter="all"
+      onclick="setFilter('all',this)">
+      All
+    </button>
+
+    <button
+      class="filter"
+      data-filter="shisanyama"
+      onclick="setFilter('shisanyama',this)">
+      🔥 Shisanyama
+    </button>
+
+    <button
+      class="filter"
+      data-filter="salon"
+      onclick="setFilter('salon',this)">
+      💈 Salons & Barbers
+    </button>
+
+  </div>
+
+  <div id="grid" class="grid">
+    <p>Loading businesses...</p>
+  </div>
+
+  <!-- BUSINESS CTA -->
+
+  <section class="business-cta">
+
+    <h2>Own a Business?</h2>
+
+    <p>
+      Bring your business online with BookZA.
+      Let customers discover your shop,
+      order food or book appointments
+      directly from their phones.
+    </p>
+
+    <button onclick="location.href='dashboard.html'">
+      List Your Business →
+    </button>
+
+  </section>
+
+</main>
+
+<footer class="footer">
+
+  <strong>BookZA</strong>
+
+  <p>Book Local. Order Ahead. Skip the Queue.</p>
+
+  <p>© 2026 BookZA. All rights reserved.</p>
+
+</footer>
+
 <script>
-const supa=supabase.createClient("https://zyalhfwubhfsomaiomng.supabase.co","sb_publishable_oBiPfsgpmfTlZRGf5dsGQw_2SjntU7v");
-let allBiz=[],curFilter='all';
-async function load(){const{data}=await supa.from('businesses').select('*').eq('is_active',true); allBiz=data||[]; render();}
-function setFilter(f,el){curFilter=f;document.querySelectorAll('.filter').forEach(x=>x.classList.remove('active'));el.classList.add('active');render();}
-function render(){const q=document.getElementById('search').value.toLowerCase();
-const filtered=allBiz.filter(b=>{const matchType=curFilter==='all'||b.type===curFilter;const matchSearch=b.name.toLowerCase().includes(q);return matchType&&matchSearch;});
-document.getElementById('grid').innerHTML=filtered.map(b=>`<div class="card" onclick="location.href='b.html?biz=${b.slug}'"><img src="${b.image||'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=500'}"><div class="card-body"><span class="badge ${b.type}">${b.type==='shisanyama'?'🔥 SHISA-NYAMA':'💈 SALON'}</span><h3 style="margin:8px 0 2px">${b.name}</h3><p style="margin:0;color:#64748b;font-size:13px">📍 ${b.location}</p></div></div>`).join('')||'<p style="padding:20px">No results</p>';}
+
+/* SUPABASE */
+
+const supa = supabase.createClient(
+  "https://zyalhfwubhfsomaiomng.supabase.co",
+  "sb_publishable_oBiPfsgpmfTlZRGf5dsGQw_2SjntU7v"
+);
+
+let allBiz = [];
+let curFilter = "all";
+
+/* LOAD BUSINESSES */
+
+async function load() {
+
+  const grid = document.getElementById("grid");
+
+  grid.innerHTML = "<p>Loading businesses...</p>";
+
+  const { data, error } = await supa
+    .from("businesses")
+    .select("*")
+    .eq("is_active", true);
+
+  if (error) {
+
+    console.error("BookZA database error:", error);
+
+    grid.innerHTML = `
+      <p>
+        Unable to load businesses.
+        Please try again later.
+      </p>
+    `;
+
+    return;
+  }
+
+  allBiz = data || [];
+
+  render();
+}
+
+/* FILTER */
+
+function setFilter(filter, element) {
+
+  curFilter = filter;
+
+  document.querySelectorAll(".filter")
+    .forEach(btn => btn.classList.remove("active"));
+
+  element.classList.add("active");
+
+  render();
+}
+
+/* HERO BUTTON FILTER */
+
+function quickFilter(filter) {
+
+  const button = document.querySelector(
+    `[data-filter="${filter}"]`
+  );
+
+  if (button) {
+    setFilter(filter, button);
+  }
+
+  document.getElementById("businesses")
+    .scrollIntoView({
+      behavior: "smooth"
+    });
+}
+
+/* ESCAPE TEXT */
+
+function escapeHTML(value) {
+
+  return String(value ?? "").replace(
+    /[&<>"']/g,
+    character => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    })[character]
+  );
+}
+
+/* RENDER BUSINESSES */
+
+function render() {
+
+  const q = document.getElementById("search")
+    .value.toLowerCase().trim();
+
+  const filtered = allBiz.filter(b => {
+
+    const matchType =
+      curFilter === "all" ||
+      b.type === curFilter;
+
+    const matchSearch =
+      String(b.name || "")
+        .toLowerCase().includes(q) ||
+      String(b.location || "")
+        .toLowerCase().includes(q);
+
+    return matchType && matchSearch;
+  });
+
+  const grid = document.getElementById("grid");
+
+  if (filtered.length === 0) {
+
+    grid.innerHTML = `
+      <p style="grid-column:1/-1;text-align:center;padding:30px;color:#777">
+        No businesses found.
+      </p>
+    `;
+
+    return;
+  }
+
+  grid.innerHTML = filtered.map(b => {
+
+    const isFood = b.type === "shisanyama";
+
+    const category = isFood
+      ? "🔥 SHISANYAMA"
+      : "💈 SALON & BARBER";
+
+    const buttonText = isFood
+      ? "View Menu →"
+      : "Book Now →";
+
+    const image = b.image ||
+      "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=500";
+
+    const businessURL =
+      "b.html?biz=" + encodeURIComponent(b.slug || "");
+
+    return `
+      <article class="card">
+
+        <img
+          src="${escapeHTML(image)}"
+          alt="${escapeHTML(b.name)}"
+          loading="lazy"
+        >
+
+        <div class="card-body">
+
+          <span class="badge">
+            ${category}
+          </span>
+
+          <h3>${escapeHTML(b.name)}</h3>
+
+          <p class="location">
+            📍 ${escapeHTML(b.location || "South Africa")}
+          </p>
+
+          <button
+            class="card-button"
+            data-url="${escapeHTML(businessURL)}"
+            onclick="location.href=this.dataset.url">
+            ${buttonText}
+          </button>
+
+        </div>
+
+      </article>
+    `;
+
+  }).join("");
+}
+
+/* MENU */
+
+function toggleMenu() {
+
+  document.getElementById("menuPanel")
+    .classList.toggle("open");
+}
+
+function closeMenu() {
+
+  document.getElementById("menuPanel")
+    .classList.remove("open");
+}
+
+/* START */
+
 load();
-</script></body></html>
+
+</script>
+
+</body>
+</html>
