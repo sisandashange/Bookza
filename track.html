@@ -1,0 +1,152 @@
+<!DOCTYPE html><html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Track My Order | BookZA</title>  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #f5f5f5;
+      color: #111;
+      font-family: Arial, sans-serif;
+    }
+
+    header {
+      max-width: 600px;
+      margin: 0 auto 24px;
+    }
+
+    .brand {
+      font-size: 26px;
+      font-weight: 800;
+    }
+
+    .card {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 22px;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 14px;
+    }
+
+    h1 {
+      margin-top: 0;
+      font-size: 25px;
+    }
+
+    label {
+      display: block;
+      margin: 18px 0 8px;
+      font-weight: bold;
+    }
+
+    input {
+      width: 100%;
+      padding: 14px;
+      border: 1px solid #aaa;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 14px;
+      padding: 14px;
+      border: 0;
+      border-radius: 8px;
+      background: #111;
+      color: #fff;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .muted {
+      color: #666;
+      line-height: 1.5;
+    }
+
+    #result {
+      margin-top: 22px;
+    }
+
+    .status {
+      display: inline-block;
+      padding: 8px 12px;
+      background: #eee;
+      border-radius: 20px;
+      font-weight: bold;
+      text-transform: capitalize;
+    }
+
+    .item {
+      padding: 12px 0;
+      border-bottom: 1px solid #eee;
+    }
+
+    .total {
+      font-size: 20px;
+      font-weight: bold;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+  </style></head><body>
+  <header>
+    <div class="brand">BookZA</div>
+    <p class="muted">Book Local. Order Ahead. Skip the Queue.</p>
+  </header>  <main class="card">
+    <h1>Track My Order</h1><p class="muted">
+  Enter your order reference number to check your order status.
+</p>
+
+<form id="trackForm">
+  <label for="orderReference">Order reference number</label>
+
+  <input
+    id="orderReference"
+    type="text"
+    placeholder="Paste your order reference"
+    autocomplete="off"
+    required
+  >
+
+  <button id="trackButton" type="submit">
+    Track Order
+  </button>
+</form>
+
+<p id="message" class="muted" role="status"></p>
+
+<section id="result" hidden>
+  <h2 id="businessName"></h2>
+
+  <p>
+    Status:
+    <span id="orderStatus" class="status"></span>
+  </p>
+
+  <div id="orderItems"></div>
+
+  <p id="orderTotal" class="total"></p>
+  <p id="orderSchedule"></p>
+
+  <button id="refreshButton" type="button">
+    Refresh Status
+  </button>
+</section>
+
+<p class="muted">
+  Keep your order reference private. Anyone who has it may be able to
+  view the order details shown on this page.
+</p>
+
+  </main>
+</body>
+</html>
