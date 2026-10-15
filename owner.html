@@ -379,6 +379,56 @@ let currentBiz = null;
 let businesses = [];
 let authBusy = false;
 
+async function testOrderIsolation() {
+const dukeBusinessId = prompt(
+"Enter Duke's shisanyama business ID for the security test:"
+);
+
+if (!dukeBusinessId) {
+    alert("Test cancelled.");
+    return;
+}
+
+try {
+    const { data: sessionData } = await supa.auth.getSession();
+    const session = sessionData?.session;
+
+    if (!session) {
+        alert("No logged-in session found.");
+        return;
+    }
+
+    const { data, error, count } = await supa
+        .from("bookza_orders")
+        .select("id, business_id", { count: "exact" })
+        .eq("business_id", dukeBusinessId);
+
+    if (error) {
+        console.log("Security test result:", error.message);
+        alert(
+            "The request was rejected or failed.\n" +
+            "Check the browser console for details."
+        );
+        return;
+    }
+
+    alert(
+        "Security test completed.\n" +
+        "Orders returned: " + (count ?? data?.length ?? 0)
+    );
+
+    console.log("Order isolation test:", {
+        signedInUser: session.user.id,
+        returnedOrders: data?.length ?? 0,
+        orderIds: data?.map(order => order.id)
+    });
+} catch (error) {
+    console.error("Security test error:", error);
+    alert("Test failed. Check the browser console.");
+}
+
+}
+
 
 /* =====================================
    ELEMENT HELPERS
