@@ -1,179 +1,1162 @@
 <!DOCTYPE html>
-<html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>BookZA Owner</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>body{font-family:sans-serif;background:#f8fafc;margin:0;padding:12px}.card{background:white;padding:16px;border-radius:12px;margin:10px 0} input,select{width:100%;padding:12px;margin:6px 0;border:1px solid #ddd;border-radius:8px} button{padding:12px 16px;background:#0f172a;color:white;border:none;border-radius:8px;font-weight:bold;cursor:pointer} table{width:100%;border-collapse:collapse} td,th{padding:8px;border-bottom:1px solid #eee;text-align:left}</style>
-</head><body>
-<h1>BookZA Owner Dashboard</h1>
-<div id="auth" class="card"><h3>Login</h3><input id="email" placeholder="Email"><input id="pass" type="password" placeholder="Password"><button onclick="login()">Login</button><button onclick="signup()">Sign Up</button></div>
-<div id="dash" style="display:none">
-<div class="card"><h3>My Business</h3><div id="myBiz"></div><h4>Add New Business</h4><input id="bName" placeholder="Business Name e.g Max's Grill"><select id="bType"><option value="salon">💈 Salon/Barber</option><option value="shisanyama">🔥 Shisa-Nyama</option></select><input id="bWhats" placeholder="WhatsApp 277..."><input id="bLoc" placeholder="Location e.g Umlazi Mega City"><button onclick="createBiz()">Create Business</button></div>
-<div class="card"><h3>My Menu / Services</h3><input id="sName" placeholder="Item name"><input id="sPrice" type="number" placeholder="Price"><input id="sDur" type="number" placeholder="Minutes (15)" value="15"><button onclick="addService()">Add</button><div id="sList"></div></div>
-<div class="card"><h3>Bookings / Orders</h3><div id="bookList">Loading...</div></div>
-<button onclick="logout()">Logout</button>
-</div>
-<script>
-const supa=supabase.createClient("https://zyalhfwubhfsomaiomng.supabase.co","sb_publishable_oBiPfsgpmfTlZRGf5dsGQw_2SjntU7v");
-let user=null, currentBiz=null;
-async function check(){const {data}=await supa.auth.getSession(); if(data.session){user=data.session.user; showDash();}}
-async function login(){const {data,error}=await supa.auth.signInWithPassword({email:email.value,password:pass.value}); if(error)alert(error.message); else location.reload();}
-async function signup(){const {data,error}=await supa.auth.signUp({email:email.value,password:pass.value}); if(error)alert(error.message); else alert('Check email then login');}
-async function logout(){await supa.auth.signOut(); location.reload();}
-async function showDash(){document.getElementById('auth').style.display='none'; document.getElementById('dash').style.display='block'; loadBiz();}
-async function loadBiz() {
-    const myBiz = document.getElementById('myBiz');
-    myBiz.textContent = 'Loading your businesses...';
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    const { data, error } = await supa
-        .from('businesses')
-        .select('id, name, slug, type, location, is_active')
-        .eq('owner_id', user.id)
-        .order('created_at', { ascending: false });
+    <title>BookZA | Owner Dashboard</title>
 
-    if (error) {
-        console.error('Could not load businesses:', error);
-        myBiz.textContent = 'Could not load businesses: ' + error.message;
-        return;
-    }
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-    if (!data || data.length === 0) {
-        currentBiz = null;
-
-        myBiz.innerHTML = `
-            <p>You have no registered businesses yet.</p>
-            <p>Use the form below to submit your business for approval.</p>
-        `;
-
-        document.getElementById('sList').textContent = '';
-        document.getElementById('bookList').textContent =
-            'Register a business to manage its orders and appointments.';
-
-        return;
-    }
-
-    myBiz.innerHTML = '';
-
-    data.forEach(biz => {
-        const card = document.createElement('div');
-        card.className = 'card';
-
-        const title = document.createElement('h4');
-        title.textContent = biz.name;
-
-        const details = document.createElement('p');
-        details.textContent =
-            `${biz.location || 'Location not set'} · ${biz.type}`;
-
-        const status = document.createElement('p');
-        status.textContent = biz.is_active
-            ? 'Status: Active'
-            : 'Status: Awaiting BookZA approval';
-
-        card.append(title, details, status);
-
-        if (biz.is_active) {
-            const link = document.createElement('a');
-            link.href = `b.html?biz=${encodeURIComponent(biz.slug)}`;
-            link.target = '_blank';
-            link.rel = 'noopener';
-            link.textContent = 'View public business page';
-            card.appendChild(link);
+    <style>
+        * {
+            box-sizing: border-box;
         }
 
-        const selectButton = document.createElement('button');
-        selectButton.textContent = 'Manage this business';
+        body {
+            margin: 0;
+            padding: 16px;
+            background: #f5f5f5;
+            color: #111;
+            font-family: Arial, sans-serif;
+        }
 
-        selectButton.addEventListener('click', async () => {
-    currentBiz = biz;
+        header {
+            margin-bottom: 20px;
+        }
 
-    myBiz.querySelectorAll('[data-selected]')
-        .forEach(el => {
-            el.removeAttribute('data-selected');
-            el.style.border = '';
-        });
+        h1 {
+            font-size: 26px;
+            margin-bottom: 6px;
+        }
 
-    card.setAttribute('data-selected', 'true');
-    card.style.border = '2px solid #0f172a';
+        h2 {
+            font-size: 20px;
+            margin-top: 0;
+        }
 
-    document.getElementById('sList').textContent =
-        'Loading menu and services...';
+        h3 {
+            font-size: 17px;
+        }
 
-    document.getElementById('bookList').textContent =
-        'Loading bookings and orders...';
+        .muted {
+            color: #666;
+            font-size: 14px;
+        }
 
-    await loadServices();
-    await loadBookings();
+        .card {
+            background: #fff;
+            border: 1px solid #e5e5e5;
+            border-radius: 12px;
+            padding: 16px;
+            margin: 14px 0;
+        }
 
-    alert('Selected business: ' + currentBiz.name);
-});
+        input,
+        select {
+            display: block;
+            width: 100%;
+            padding: 13px;
+            margin: 9px 0;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background: white;
+            color: #111;
+            font-size: 16px;
+        }
 
-            myBiz.querySelectorAll('[data-selected]')
-                .forEach(el => el.removeAttribute('data-selected'));
+        button {
+            padding: 12px 16px;
+            margin: 5px 5px 5px 0;
+            border: 1px solid #111;
+            border-radius: 8px;
+            background: #111;
+            color: #fff;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+        }
 
-            card.setAttribute('data-selected', 'true');
-            card.style.border = '2px solid #0f172a';
-        });
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
 
-        card.appendChild(document.createElement('br'));
-        card.appendChild(selectButton);
-        myBiz.appendChild(card);
-    });
+        .secondary {
+            background: white;
+            color: #111;
+        }
 
-    currentBiz = data[0];
+        .business-card {
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 14px;
+            margin: 12px 0;
+            overflow-wrap: anywhere;
+        }
 
-    await loadServices();
-    await loadBookings();
+        .business-card.selected {
+            border: 2px solid #111;
+            background: #fafafa;
+        }
+
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 8px;
+            background: #eee;
+            overflow-wrap: anywhere;
+        }
+
+        .error {
+            color: #a00000;
+            background: #fff0f0;
+        }
+
+        .success {
+            color: #075b24;
+            background: #edfff2;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .service-row,
+        .order-row {
+            border-bottom: 1px solid #eee;
+            padding: 12px 0;
+            overflow-wrap: anywhere;
+        }
+
+        .service-row:last-child,
+        .order-row:last-child {
+            border-bottom: none;
+        }
+
+        a {
+            color: #111;
+            font-weight: bold;
+        }
+
+        #logoutButton {
+            width: 100%;
+            margin-top: 18px;
+        }
+
+        #loginButton,
+        #signupButton {
+            width: 100%;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <h1>BookZA</h1>
+    <p class="muted">Business Owner Dashboard</p>
+</header>
+
+<!-- AUTHENTICATION -->
+
+<section id="authSection" class="card">
+    <h2>Owner Login</h2>
+
+    <p class="muted">
+        Log in to manage your registered businesses.
+    </p>
+
+    <div id="authMessage" class="status hidden"></div>
+
+    <label for="email">Email address</label>
+    <input
+        id="email"
+        type="email"
+        autocomplete="email"
+        placeholder="Enter your email"
+    >
+
+    <label for="pass">Password</label>
+    <input
+        id="pass"
+        type="password"
+        autocomplete="current-password"
+        placeholder="Enter your password"
+    >
+
+    <button id="loginButton" type="button">
+        Login
+    </button>
+
+    <button id="signupButton" class="secondary" type="button">
+        Create Owner Account
+    </button>
+</section>
+
+<!-- DASHBOARD -->
+
+<section id="dashboard" class="hidden">
+
+    <div class="card">
+        <h2>Welcome</h2>
+        <p id="loggedInEmail" class="muted"></p>
+        <div id="dashboardMessage" class="status hidden"></div>
+    </div>
+
+    <!-- REGISTERED BUSINESSES -->
+
+    <div class="card">
+        <h2>My Businesses</h2>
+
+        <p class="muted">
+            Select a business to manage its menu, services and orders.
+        </p>
+
+        <div id="myBiz">Loading your businesses...</div>
+    </div>
+
+    <!-- REGISTER BUSINESS -->
+
+    <div class="card">
+        <h2>Register a Business</h2>
+
+        <p class="muted">
+            New businesses remain inactive until BookZA approves them.
+        </p>
+
+        <label for="bName">Business name</label>
+        <input
+            id="bName"
+            maxlength="100"
+            placeholder="e.g. My Salon"
+        >
+
+        <label for="bType">Business type</label>
+        <select id="bType">
+            <option value="salon">Salon / Barber</option>
+            <option value="shisanyama">Shisa-Nyama</option>
+        </select>
+
+        <label for="bWhats">WhatsApp number</label>
+        <input
+            id="bWhats"
+            type="tel"
+            maxlength="20"
+            placeholder="e.g. 27721234567"
+        >
+
+        <label for="bLoc">Business location</label>
+        <input
+            id="bLoc"
+            maxlength="150"
+            placeholder="e.g. Umlazi, Durban"
+        >
+
+        <button id="createBizButton" type="button">
+            Submit Business
+        </button>
+    </div>
+
+    <!-- MENU AND SERVICES -->
+
+    <div class="card">
+        <h2>My Menu / Services</h2>
+
+        <p id="selectedBusinessLabel" class="muted">
+            Select a business above first.
+        </p>
+
+        <div id="serviceMessage" class="status hidden"></div>
+
+        <div id="serviceForm" class="hidden">
+
+            <label for="sName">Item or service name</label>
+            <input
+                id="sName"
+                maxlength="100"
+                placeholder="e.g. Haircut or Phuthu"
+            >
+
+            <label for="sPrice">Price in rand</label>
+            <input
+                id="sPrice"
+                type="number"
+                min="0.01"
+                step="0.01"
+                placeholder="e.g. 50"
+            >
+
+            <label for="sDur">Duration in minutes (for appointments)</label>
+            <input
+                id="sDur"
+                type="number"
+                min="1"
+                max="1440"
+                value="15"
+            >
+
+            <button id="addServiceButton" type="button">
+                Add Item / Service
+            </button>
+        </div>
+
+        <div id="sList">
+            Select a business to load its menu or services.
+        </div>
+    </div>
+
+    <!-- BOOKINGS -->
+
+    <div class="card">
+        <h2>Salon Appointments</h2>
+
+        <div id="bookingMessage" class="status hidden"></div>
+
+        <div id="bookingsList">
+            Select a business to load appointments.
+        </div>
+    </div>
+
+    <!-- FOOD ORDERS -->
+
+    <div class="card">
+        <h2>Food Orders</h2>
+
+        <div id="ordersMessage" class="status hidden"></div>
+
+        <div id="ordersList">
+            Select a business to load food orders.
+        </div>
+    </div>
+
+    <button id="logoutButton" type="button">
+        Logout
+    </button>
+
+</section>
+
+<script>
+"use strict";
+
+/* =====================================
+   SUPABASE CONNECTION
+===================================== */
+
+const SUPABASE_URL =
+    "https://zyalhfwubhfsomaiomng.supabase.co";
+
+const SUPABASE_KEY =
+    "sb_publishable_oBiPfsgpmfTlZRGf5dsGQw_2SjntU7v";
+
+const supa = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+);
+
+let user = null;
+let currentBiz = null;
+let businesses = [];
+let authBusy = false;
+
+
+/* =====================================
+   ELEMENT HELPERS
+===================================== */
+
+function el(id) {
+    return document.getElementById(id);
+}
+
+function showMessage(id, message, type = "") {
+    const box = el(id);
+
+    box.textContent = message;
+    box.classList.remove("hidden", "error", "success");
+
+    if (type) {
+        box.classList.add(type);
+    }
+}
+
+function hideMessage(id) {
+    el(id).classList.add("hidden");
+}
+
+function setButtonBusy(id, busy, busyText, normalText) {
+    const button = el(id);
+
+    button.disabled = busy;
+    button.textContent = busy ? busyText : normalText;
 }
 
 
-async function createBiz() {
-    const name = document.getElementById('bName').value.trim();
-    const type = document.getElementById('bType').value;
-    const whatsapp = document.getElementById('bWhats').value.trim();
-    const location = document.getElementById('bLoc').value.trim();
+/* =====================================
+   AUTHENTICATION
+===================================== */
 
-    if (!name || !whatsapp || !location) {
-        alert('Please complete all business details.');
-        return;
-    }
+async function checkSession() {
+    el("authSection").classList.remove("hidden");
+    el("dashboard").classList.add("hidden");
 
-    const { data: sessionData, error: sessionError } =
-        await supa.auth.getSession();
+    try {
+        const { data, error } = await supa.auth.getSession();
 
-    if (sessionError || !sessionData.session) {
-        alert('Please log in before registering your business.');
-        return;
-    }
-
-    const { data, error } = await supa.rpc(
-        'bookza_register_business',
-        {
-            p_name: name,
-            p_type: type,
-            p_whatsapp: whatsapp,
-            p_location: location
+        if (error) {
+            showMessage(
+                "authMessage",
+                "Could not check login: " + error.message,
+                "error"
+            );
+            return;
         }
+
+        if (data.session && data.session.user) {
+            user = data.session.user;
+            await showDashboard();
+        }
+    } catch (error) {
+        showMessage(
+            "authMessage",
+            "Connection problem: " + error.message,
+            "error"
+        );
+    }
+}
+
+
+async function login() {
+    if (authBusy) return;
+
+    const emailValue = el("email").value.trim();
+    const passwordValue = el("pass").value;
+
+    if (!emailValue || !passwordValue) {
+        showMessage(
+            "authMessage",
+            "Enter your email address and password.",
+            "error"
+        );
+        return;
+    }
+
+    authBusy = true;
+
+    setButtonBusy(
+        "loginButton",
+        true,
+        "Logging in...",
+        "Login"
     );
+
+    hideMessage("authMessage");
+
+    try {
+        const { data, error } = await supa.auth.signInWithPassword({
+            email: emailValue,
+            password: passwordValue
+        });
+
+        if (error) {
+            showMessage(
+                "authMessage",
+                "Login failed: " + error.message,
+                "error"
+            );
+            return;
+        }
+
+        user = data.user;
+
+        if (!user) {
+            showMessage(
+                "authMessage",
+                "Login did not return a user. Please try again.",
+                "error"
+            );
+            return;
+        }
+
+        await showDashboard();
+
+    } catch (error) {
+        showMessage(
+            "authMessage",
+            "Login error: " + error.message,
+            "error"
+        );
+    } finally {
+        authBusy = false;
+
+        setButtonBusy(
+            "loginButton",
+            false,
+            "Logging in...",
+            "Login"
+        );
+    }
+}
+
+
+async function signup() {
+    if (authBusy) return;
+
+    const emailValue = el("email").value.trim();
+    const passwordValue = el("pass").value;
+
+    if (!emailValue || !passwordValue) {
+        showMessage(
+            "authMessage",
+            "Enter your email and choose a password.",
+            "error"
+        );
+        return;
+    }
+
+    if (passwordValue.length < 6) {
+        showMessage(
+            "authMessage",
+            "Your password must contain at least 6 characters.",
+            "error"
+        );
+        return;
+    }
+
+    authBusy = true;
+
+    setButtonBusy(
+        "signupButton",
+        true,
+        "Creating account...",
+        "Create Owner Account"
+    );
+
+    try {
+        const { data, error } = await supa.auth.signUp({
+            email: emailValue,
+            password: passwordValue
+        });
+
+        if (error) {
+            showMessage(
+                "authMessage",
+                "Sign-up failed: " + error.message,
+                "error"
+            );
+            return;
+        }
+
+        if (data.session && data.user) {
+            user = data.user;
+            await showDashboard();
+        } else {
+            showMessage(
+                "authMessage",
+                "Account request submitted. Check your email if confirmation is required, then log in.",
+                "success"
+            );
+        }
+
+    } catch (error) {
+        showMessage(
+            "authMessage",
+            "Sign-up error: " + error.message,
+            "error"
+        );
+    } finally {
+        authBusy = false;
+
+        setButtonBusy(
+            "signupButton",
+            false,
+            "Creating account...",
+            "Create Owner Account"
+        );
+    }
+}
+
+
+async function logout() {
+    const { error } = await supa.auth.signOut();
 
     if (error) {
-        console.error('Business registration error:', error);
-        alert('Business registration failed: ' + error.message);
+        alert("Logout failed: " + error.message);
         return;
     }
 
-    alert(
-        'Business application submitted successfully! ' +
-        'Your business must be approved by BookZA before it appears publicly.'
-    );
+    user = null;
+    currentBiz = null;
 
-    document.getElementById('bName').value = '';
-    document.getElementById('bWhats').value = '';
-    document.getElementById('bLoc').value = '';
+    el("dashboard").classList.add("hidden");
+    el("authSection").classList.remove("hidden");
+
+    el("pass").value = "";
+
+    showMessage(
+        "authMessage",
+        "You have logged out.",
+        "success"
+    );
+}
+
+
+async function showDashboard() {
+    if (!user) return;
+
+    el("authSection").classList.add("hidden");
+    el("dashboard").classList.remove("hidden");
+
+    el("loggedInEmail").textContent =
+        "Logged in as: " + (user.email || "Account");
 
     await loadBiz();
 }
-async function loadServices(){if(!currentBiz)return; const {data}=await supa.from('services').select('*').eq('business_id',currentBiz.id); document.getElementById('sList').innerHTML=data.map(s=>`${s.name} - R${s.price} <button onclick="delService('${s.id}')">x</button>`).join('<br>');}
-async function addService(){const {error}=await supa.from('services').insert({business_id:currentBiz.id,name:sName.value,price:parseFloat(sPrice.value),duration:parseInt(sDur.value)}); if(error)alert(error.message); else loadServices();}
-async function delService(id){await supa.from('services').delete().eq('id',id); loadServices();}
-async function loadBookings(){const {data}=await supa.from('bookings').select('*,services(name)').eq('business_id',currentBiz.id).order('created_at',{ascending:false}).limit(20); document.getElementById('bookList').innerHTML='<table><tr><th>Date</th><th>Client</th><th>Item</th></tr>'+data.map(b=>`<tr><td>${b.date} ${b.time}</td><td>${b.customer_name}<br>${b.customer_phone}</td><td>${b.services?.name||''}</td></tr>`).join('')+'</table>';}
-check();
-</script></body></html>
+
+
+/* =====================================
+   LOAD BUSINESSES
+===================================== */
+
+async function loadBiz() {
+    const container = el("myBiz");
+
+    container.textContent = "Loading your businesses...";
+
+    currentBiz = null;
+    businesses = [];
+
+    el("serviceForm").classList.add("hidden");
+
+    el("sList").textContent = "Select a business to load its menu.";
+    el("bookingsList").textContent =
+        "Select a business to load appointments.";
+    el("ordersList").textContent =
+        "Select a business to load food orders.";
+
+    try {
+        const { data, error } = await supa
+            .from("businesses")
+            .select("id, name, slug, type, location, is_active, owner_id")
+            .eq("owner_id", user.id)
+            .order("created_at", { ascending: false });
+
+        if (error) {
+            container.textContent =
+                "Could not load businesses: " + error.message;
+            return;
+        }
+
+        businesses = data || [];
+
+        if (businesses.length === 0) {
+            container.textContent =
+                "No businesses are registered under this account yet. Use the registration form below.";
+            return;
+        }
+
+        container.textContent = "";
+
+        businesses.forEach(function (biz) {
+            const card = document.createElement("div");
+            card.className = "business-card";
+            card.dataset.businessId = biz.id;
+
+            const title = document.createElement("h3");
+            title.textContent = biz.name;
+
+            const location = document.createElement("p");
+            location.textContent =
+                (biz.location || "Location not set") +
+                " · " + biz.type;
+
+            const status = document.createElement("p");
+            status.textContent = biz.is_active
+                ? "Status: Active"
+                : "Status: Awaiting BookZA approval";
+
+            const selectButton = document.createElement("button");
+            selectButton.type = "button";
+            selectButton.textContent = "Manage this business";
+
+            selectButton.addEventListener("click", async function () {
+                await selectBusiness(biz);
+            });
+
+            card.appendChild(title);
+            card.appendChild(location);
+            card.appendChild(status);
+
+            if (biz.is_active) {
+                const link = document.createElement("a");
+
+                link.href =
+                    "b.html?biz=" + encodeURIComponent(biz.slug);
+
+                link.target = "_blank";
+                link.rel = "noopener";
+                link.textContent = "View public business page";
+
+                card.appendChild(link);
+                card.appendChild(document.createElement("br"));
+            }
+
+            card.appendChild(selectButton);
+            container.appendChild(card);
+        });
+
+        await selectBusiness(businesses[0]);
+
+    } catch (error) {
+        container.textContent =
+            "Business loading error: " + error.message;
+    }
+}
+
+
+/* =====================================
+   SELECT BUSINESS
+===================================== */
+
+async function selectBusiness(biz) {
+    currentBiz = biz;
+
+    document.querySelectorAll(".business-card").forEach(function (card) {
+        card.classList.toggle(
+            "selected",
+            card.dataset.businessId === biz.id
+        );
+    });
+
+    el("selectedBusinessLabel").textContent =
+        "Selected business: " + biz.name;
+
+    el("serviceForm").classList.remove("hidden");
+
+    showMessage(
+        "dashboardMessage",
+        "Selected " + biz.name + ". Loading its information...",
+        "success"
+    );
+
+    el("sList").textContent = "Loading menu and services...";
+    el("bookingsList").textContent = "Loading appointments...";
+    el("ordersList").textContent = "Loading food orders...";
+
+    await loadServices();
+    await loadBookings();
+    await loadFoodOrders();
+
+    showMessage(
+        "dashboardMessage",
+        "Selected business: " + biz.name,
+        "success"
+    );
+}
+
+
+/* =====================================
+   REGISTER A BUSINESS
+===================================== */
+
+async function createBiz() {
+    if (!user) {
+        alert("Please log in first.");
+        return;
+    }
+
+    const name = el("bName").value.trim();
+    const type = el("bType").value;
+    const whatsapp = el("bWhats").value.trim();
+    const location = el("bLoc").value.trim();
+
+    if (name.length < 2) {
+        alert("Enter a valid business name.");
+        return;
+    }
+
+    if (!whatsapp || !location) {
+        alert("Enter the WhatsApp number and location.");
+        return;
+    }
+
+    setButtonBusy(
+        "createBizButton",
+        true,
+        "Submitting...",
+        "Submit Business"
+    );
+
+    try {
+        const { data, error } = await supa.rpc(
+            "bookza_register_business",
+            {
+                p_name: name,
+                p_type: type,
+                p_whatsapp: whatsapp,
+                p_location: location
+            }
+        );
+
+        if (error) {
+            alert("Business registration failed: " + error.message);
+            return;
+        }
+
+        alert(
+            "Business submitted successfully. It must be approved by BookZA before it becomes publicly active."
+        );
+
+        el("bName").value = "";
+        el("bWhats").value = "";
+        el("bLoc").value = "";
+
+        await loadBiz();
+
+    } catch (error) {
+        alert("Registration error: " + error.message);
+    } finally {
+        setButtonBusy(
+            "createBizButton",
+            false,
+            "Submitting...",
+            "Submit Business"
+        );
+    }
+}
+
+
+/* =====================================
+   LOAD MENU / SERVICES
+===================================== */
+
+async function loadServices() {
+    if (!currentBiz) {
+        el("sList").textContent = "Select a business first.";
+        return;
+    }
+
+    const { data, error } = await supa
+        .from("services")
+        .select("*")
+        .eq("business_id", currentBiz.id)
+        .order("name", { ascending: true });
+
+    if (error) {
+        el("sList").textContent =
+            "Could not load menu/services: " + error.message;
+
+        showMessage(
+            "serviceMessage",
+            "Supabase returned an error. The service security policies may need checking.",
+            "error"
+        );
+
+        return;
+    }
+
+    hideMessage("serviceMessage");
+
+    el("sList").textContent = "";
+
+    if (!data || data.length === 0) {
+        el("sList").textContent =
+            "No menu items or services were found for this business.";
+
+        return;
+    }
+
+    data.forEach(function (service) {
+        const row = document.createElement("div");
+        row.className = "service-row";
+
+        const name = document.createElement("strong");
+        name.textContent = service.name;
+
+        const price = document.createElement("p");
+        price.textContent = "Price: R" + service.price;
+
+        row.appendChild(name);
+        row.appendChild(price);
+
+        if (service.duration) {
+            const duration = document.createElement("p");
+            duration.className = "muted";
+            duration.textContent =
+                "Duration: " + service.duration + " minutes";
+
+            row.appendChild(duration);
+        }
+
+        const deleteButton = document.createElement("button");
+        deleteButton.type = "button";
+        deleteButton.textContent = "Delete";
+        deleteButton.className = "secondary";
+
+        deleteButton.addEventListener("click", function () {
+            delService(service.id, service.name);
+        });
+
+        row.appendChild(deleteButton);
+        el("sList").appendChild(row);
+    });
+}
+
+
+/* =====================================
+   ADD MENU / SERVICE ITEM
+===================================== */
+
+async function addService() {
+    if (!currentBiz) {
+        alert("Select a business first.");
+        return;
+    }
+
+    const name = el("sName").value.trim();
+    const price = Number(el("sPrice").value);
+    const duration = Number(el("sDur").value);
+
+    if (name.length < 1) {
+        alert("Enter an item or service name.");
+        return;
+    }
+
+    if (!Number.isFinite(price) || price <= 0) {
+        alert("Enter a valid price greater than zero.");
+        return;
+    }
+
+    if (
+        !Number.isInteger(duration) ||
+        duration < 1 ||
+        duration > 1440
+    ) {
+        alert("Enter a duration between 1 and 1440 minutes.");
+        return;
+    }
+
+    setButtonBusy(
+        "addServiceButton",
+        true,
+        "Adding...",
+        "Add Item / Service"
+    );
+
+    try {
+        const { error } = await supa
+            .from("services")
+            .insert({
+                business_id: currentBiz.id,
+                name: name,
+                price: price,
+                duration: duration
+            });
+
+        if (error) {
+            showMessage(
+                "serviceMessage",
+                "Could not add item: " + error.message,
+                "error"
+            );
+            return;
+        }
+
+        el("sName").value = "";
+        el("sPrice").value = "";
+
+        showMessage(
+            "serviceMessage",
+            "Item or service added successfully.",
+            "success"
+        );
+
+        await loadServices();
+
+    } catch (error) {
+        showMessage(
+            "serviceMessage",
+            "Add item error: " + error.message,
+            "error"
+        );
+    } finally {
+        setButtonBusy(
+            "addServiceButton",
+            false,
+            "Adding...",
+            "Add Item / Service"
+        );
+    }
+}
+
+
+/* =====================================
+   DELETE MENU / SERVICE ITEM
+===================================== */
+
+async function delService(id, name) {
+    if (!currentBiz) return;
+
+    if (!confirm('Delete "' + name + '"?')) return;
+
+    const { error } = await supa
+        .from("services")
+        .delete()
+        .eq("id", id)
+        .eq("business_id", currentBiz.id);
+
+    if (error) {
+        showMessage(
+            "serviceMessage",
+            "Could not delete item: " + error.message,
+            "error"
+        );
+        return;
+    }
+
+    showMessage(
+        "serviceMessage",
+        "Item deleted.",
+        "success"
+    );
+
+    await loadServices();
+}
+
+
+/* =====================================
+   LOAD SALON APPOINTMENTS
+===================================== */
+
+async function loadBookings() {
+    if (!currentBiz) return;
+
+    const { data, error } = await supa
+        .from("bookings")
+        .select("*, services(name)")
+        .eq("business_id", currentBiz.id)
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+    if (error) {
+        el("bookingsList").textContent =
+            "Could not load appointments: " + error.message;
+        return;
+    }
+
+    el("bookingsList").textContent = "";
+
+    if (!data || data.length === 0) {
+        el("bookingsList").textContent =
+            "No appointments found.";
+        return;
+    }
+
+    data.forEach(function (booking) {
+        const row = document.createElement("div");
+        row.className = "order-row";
+
+        const details = document.createElement("p");
+        details.textContent =
+            (booking.services?.name || "Service") +
+            " · " + (booking.date || "") +
+            " " + (booking.time || "");
+
+        const customer = document.createElement("p");
+        customer.textContent =
+            "Customer: " + (booking.customer_name || "Unknown") +
+            " · " + (booking.customer_phone || "");
+
+        const status = document.createElement("p");
+        status.textContent =
+            "Status: " + (booking.status || "pending");
+
+        row.append(details, customer, status);
+        el("bookingsList").appendChild(row);
+    });
+}
+
+
+/* =====================================
+   LOAD FOOD ORDERS
+===================================== */
+
+async function loadFoodOrders() {
+    if (!currentBiz) return;
+
+    const { data, error } = await supa
+        .from("bookza_orders")
+        .select(
+            "id, customer_name, customer_phone, order_type, booking_date, booking_time, total_amount, status, created_at"
+        )
+        .eq("business_id", currentBiz.id)
+        .eq("order_type", "food")
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+    if (error) {
+        el("ordersList").textContent =
+            "Could not load food orders: " + error.message;
+        return;
+    }
+
+    el("ordersList").textContent = "";
+
+    if (!data || data.length === 0) {
+        el("ordersList").textContent =
+            "No food orders found.";
+        return;
+    }
+
+    data.forEach(function (order) {
+        const row = document.createElement("div");
+        row.className = "order-row";
+
+        const customer = document.createElement("strong");
+        customer.textContent =
+            order.customer_name || "Customer";
+
+        const phone = document.createElement("p");
+        phone.textContent =
+            "Phone: " + (order.customer_phone || "Not provided");
+
+        const total = document.createElement("p");
+        total.textContent =
+            "Order total: R" + order.total_amount;
+
+        const time = document.createElement("p");
+        time.textContent =
+            "Requested: " +
+            (order.booking_date || "") + " " +
+            (order.booking_time || "");
+
+        const status = document.createElement("p");
+        status.textContent =
+            "Status: " + (order.status || "pending");
+
+        row.append(customer, phone, total, time, status);
+        el("ordersList").appendChild(row);
+    });
+}
+
+
+/* =====================================
+   BUTTON EVENTS
+===================================== */
+
+el("loginButton").addEventListener("click", login);
+el("signupButton").addEventListener("click", signup);
+el("logoutButton").addEventListener("click", logout);
+el("createBizButton").addEventListener("click", createBiz);
+el("addServiceButton").addEventListener("click", addService);
+
+
+/* =====================================
+   START
+===================================== */
+
+checkSession();
+</script>
+
+</body>
+</html>
