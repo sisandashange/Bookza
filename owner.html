@@ -1058,7 +1058,7 @@ saveOfferButton.addEventListener("click", async () => {
     saveOfferButton.textContent = "Saving...";
 
     try {
-        const { data, error } = await supabase
+        const saveRequest = supabase
     .from("services")
     .update({
         special_price: specialPrice,
@@ -1069,6 +1069,19 @@ saveOfferButton.addEventListener("click", async () => {
     .eq("business_id", currentBiz.id)
     .select("id, name, price, special_price, special_start, special_end")
     .maybeSingle();
+
+const timeoutRequest = new Promise((_, reject) => {
+    setTimeout(() => {
+        reject(new Error(
+            "The save request timed out. Check your connection and Supabase response."
+        ));
+    }, 15000);
+});
+
+const { data, error } = await Promise.race([
+    saveRequest,
+    timeoutRequest
+]);
 
 console.log("Special offer save result:", {
     data,
@@ -1082,9 +1095,7 @@ if (error) {
 }
 
 if (!data) {
-    throw new Error(
-        "No service was updated. Check the selected business and owner permissions."
-    );
+    throw new Error("No service was updated.");
 }
 
         showMessage("Special offer saved successfully.");
