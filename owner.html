@@ -381,77 +381,7 @@ let currentBiz = null;
 let businesses = [];
 let authBusy = false;
 
-async function testOrderIsolation() {
-    const dukeBusinessId = prompt(
-        "Enter Duke's shisanyama business ID:"
-    );
 
-    if (!dukeBusinessId) {
-        alert("Test cancelled.");
-        return;
-    }
-
-    try {
-        const { data: sessionData, error: sessionError } =
-            await supa.auth.getSession();
-
-        if (sessionError || !sessionData?.session) {
-            alert("No logged-in session found.");
-            return;
-        }
-
-        const ordersResult = await supa
-            .from("bookza_orders")
-            .select("id", { count: "exact", head: true })
-            .eq("business_id", dukeBusinessId);
-
-        if (ordersResult.error) {
-            alert("Orders test failed. Check the console.");
-            console.error(ordersResult.error);
-            return;
-        }
-
-        const itemsResult = await supa
-            .from("bookza_order_items")
-            .select("id", { count: "exact", head: true });
-
-        if (itemsResult.error) {
-            alert("Order items test failed. Check the console.");
-            console.error(itemsResult.error);
-            return;
-        }
-
-        const customersResult = await supa
-            .from("bookza_customers")
-            .select("id", { count: "exact", head: true });
-
-        if (customersResult.error) {
-            alert("Customer records test failed. Check the console.");
-            console.error(customersResult.error);
-            return;
-        }
-
-        const results = {
-            dukeOrders: ordersResult.count ?? 0,
-            accessibleOrderItems: itemsResult.count ?? 0,
-            accessibleCustomerRecords: customersResult.count ?? 0
-        };
-
-        console.log("BookZA security test:", results);
-
-        alert(
-            "Security test completed.\n\n" +
-            "Duke's orders accessible: " + results.dukeOrders +
-            "\nOrder items accessible: " + results.accessibleOrderItems +
-            "\nCustomer records accessible: " +
-            results.accessibleCustomerRecords
-        );
-
-    } catch (error) {
-        console.error("Security test error:", error);
-        alert("Test failed. Check the console.");
-    }
-}
 
 /* =====================================
    ELEMENT HELPERS
