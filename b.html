@@ -831,7 +831,7 @@ function selectedItems() {
     .map(item => ({
       id: item.service.id,
       name: item.service.name,
-      price: Number(item.service.price),
+      price: getServicePrice(item.service),
       quantity: item.quantity
     }));
 }
