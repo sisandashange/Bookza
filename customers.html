@@ -525,8 +525,32 @@ async function loadCustomerHistory() {
                 </h2>
 
                 <div class="customer-phone">
-                    Phone: ${escapeHtml(customer.phone)}
-                </div>
+    Phone: ${escapeHtml(customer.phone)}
+</div><a
+href="https://wa.me/${customer.phone.replace(/\D/g, '')}?text=${encodeURIComponent(
+"Hello " + customer.name +
+", this is " + currentBusiness.name +
+" contacting you through BookZA. Thank you for supporting our business!"
+)}"
+target="_blank"
+rel="noopener noreferrer"
+style="
+display: block;
+text-align: center;
+background: #111;
+color: white;
+padding: 12px;
+border-radius: 8px;
+text-decoration: none;
+font-weight: bold;
+margin: 12px 0;
+"
+
+«»
+
+Contact Customer on WhatsApp
+
+</a>
 
                 <div class="summary">
                     <strong>Total orders:</strong>
