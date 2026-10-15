@@ -1394,6 +1394,271 @@ async function loadServices() {
     }
 }
 
+
+/* =====================================
+   UPLOAD SERVICE PHOTOS
+===================================== */
+
+async function uploadServicePhotos(
+    service,
+    fileInput,
+    uploadButton
+) {
+    if (!currentBiz) {
+        alert("Select a business first.");
+        return;
+    }
+
+    const files = Array.from(fileInput.files || []);
+
+    if (files.length === 0) {
+        alert("Choose at least one photo.");
+        return;
+    }
+
+    if (files.length > 3) {
+        alert("You can upload a maximum of three photos at a time.");
+        return;
+    }
+
+    const allowedTypes = [
+        "image/jpeg",
+        "image/png",
+        "image/webp"
+    ];
+
+    const maxSize = 2 * 1024 * 1024;
+
+    for (const file of files) {
+        if (!allowedTypes.includes(file.type)) {
+            alert(
+                "Only JPG, PNG and WebP images are allowed."
+            );
+            return;
+        }
+
+        if (file.size === 0 || file.size > maxSize) {
+            alert(
+                "Each photo must be larger than 0 bytes and no more than 2 MB."
+            );
+            return;
+        }
+    }
+
+    // Check existing photos before uploading.
+    const { data: existing, error: existingError } = await supa
+        .from("service_photos")
+        .select("display_order")
+        .eq("business_id", currentBiz.id)
+        .eq("service_id", service.id);
+
+    if (existingError) {
+        alert(
+            "Could not check existing photos: " +
+            existingError.message
+        );
+        return;
+    }
+
+    const currentPhotos = existing || [];
+
+    if (currentPhotos.length + files.length > 3) {
+        alert(
+            "This item can have only three photos. " +
+            "It currently has " + currentPhotos.length + "."
+        );
+        return;
+    }
+
+    const occupiedSlots = currentPhotos.map(function (photo) {
+        return photo.display_order;
+    });
+
+    const availableSlots = [1, 2, 3].filter(function (slot) {
+        return !occupiedSlots.includes(slot);
+    });
+
+    uploadButton.disabled = true;
+    uploadButton.textContent = "Uploading...";
+
+    const uploadedPaths = [];
+
+    try {
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+
+            const extensionByType = {
+                "image/jpeg": "jpg",
+                "image/png": "png",
+                "image/webp": "webp"
+            };
+
+            const extension = extensionByType[file.type];
+
+            const path =
+                currentBiz.id + "/" +
+                service.id + "/" +
+                crypto.randomUUID() + "." +
+                extension;
+
+            // Upload the actual image file.
+            const { error: uploadError } = await supa.storage
+                .from("bookza-service-photos")
+                .upload(path, file, {
+                    contentType: file.type,
+                    upsert: false
+                });
+
+            if (uploadError) {
+                throw new Error(
+                    "Photo upload failed: " +
+                    uploadError.message
+                );
+            }
+
+            uploadedPaths.push(path);
+
+            // Save its information in the database.
+            const { error: recordError } = await supa
+                .from("service_photos")
+                .insert({
+                    business_id: currentBiz.id,
+                    service_id: service.id,
+                    storage_path: path,
+                    display_order: availableSlots[i]
+                });
+
+            if (recordError) {
+                throw new Error(
+                    "Photo uploaded, but its database record " +
+                    "could not be saved: " +
+                    recordError.message
+                );
+            }
+        }
+
+        fileInput.value = "";
+
+        showMessage(
+            "serviceMessage",
+            "Photo upload successful.",
+            "success"
+        );
+
+        await loadServices();
+
+    } catch (error) {
+        /*
+         * Clean up files uploaded during this attempt
+         * if the upload process fails.
+         */
+        if (uploadedPaths.length > 0) {
+            const { error: cleanupError } = await supa.storage
+                .from("bookza-service-photos")
+                .remove(uploadedPaths);
+
+            if (cleanupError) {
+                console.error(
+                    "Photo cleanup failed:",
+                    cleanupError.message
+                );
+            }
+        }
+
+        /*
+         * Remove any metadata records for files that were
+         * uploaded during this attempt.
+         */
+        if (uploadedPaths.length > 0) {
+            const { error: metadataCleanupError } = await supa
+                .from("service_photos")
+                .delete()
+                .eq("business_id", currentBiz.id)
+                .eq("service_id", service.id)
+                .in("storage_path", uploadedPaths);
+
+            if (metadataCleanupError) {
+                console.error(
+                    "Photo metadata cleanup failed:",
+                    metadataCleanupError.message
+                );
+            }
+        }
+
+        showMessage(
+            "serviceMessage",
+            error.message,
+            "error"
+        );
+
+    } finally {
+        uploadButton.disabled = false;
+        uploadButton.textContent = "Upload Photos";
+    }
+}
+
+
+
+/* =====================================
+   DELETE SERVICE PHOTO
+===================================== */
+
+async function deleteServicePhoto(photo) {
+    if (!currentBiz) {
+        alert("Select a business first.");
+        return;
+    }
+
+    if (
+        !confirm(
+            "Delete this photo? This action cannot be undone."
+        )
+    ) {
+        return;
+    }
+
+    // Remove the image from Storage first.
+    const { error: storageError } = await supa.storage
+        .from("bookza-service-photos")
+        .remove([photo.storage_path]);
+
+    if (storageError) {
+        showMessage(
+            "serviceMessage",
+            "Could not delete photo: " +
+            storageError.message,
+            "error"
+        );
+        return;
+    }
+
+    // Remove its database record.
+    const { error: recordError } = await supa
+        .from("service_photos")
+        .delete()
+        .eq("id", photo.id)
+        .eq("business_id", currentBiz.id);
+
+    if (recordError) {
+        showMessage(
+            "serviceMessage",
+            "The image was removed, but its database record " +
+            "could not be deleted: " + recordError.message,
+            "error"
+        );
+        return;
+    }
+
+    showMessage(
+        "serviceMessage",
+        "Photo deleted successfully.",
+        "success"
+    );
+
+    await loadServices();
+}
+
+
 /* =====================================
    ADD MENU / SERVICE ITEM
 ===================================== */
