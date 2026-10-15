@@ -963,6 +963,63 @@ data.forEach(function (service) {
         row.appendChild(duration);
     }
 
+// Special-offer editor.
+const offerHeading = document.createElement("h3");
+offerHeading.textContent = "Special Offer";
+row.appendChild(offerHeading);
+
+const specialPriceLabel = document.createElement("label");
+specialPriceLabel.textContent = "Special price (R)";
+row.appendChild(specialPriceLabel);
+
+const specialPriceInput = document.createElement("input");
+specialPriceInput.type = "number";
+specialPriceInput.min = "0";
+specialPriceInput.step = "1";
+specialPriceInput.placeholder = "e.g. 50";
+specialPriceInput.value =
+    service.special_price == null ? "" : service.special_price;
+row.appendChild(specialPriceInput);
+
+const offerStartLabel = document.createElement("label");
+offerStartLabel.textContent = "Offer starts";
+row.appendChild(offerStartLabel);
+
+const offerStartInput = document.createElement("input");
+offerStartInput.type = "datetime-local";
+offerStartInput.value = service.special_start
+    ? new Date(
+        new Date(service.special_start).getTime()
+        - new Date().getTimezoneOffset() * 60000
+      ).toISOString().slice(0, 16)
+    : "";
+row.appendChild(offerStartInput);
+
+const offerEndLabel = document.createElement("label");
+offerEndLabel.textContent = "Offer ends";
+row.appendChild(offerEndLabel);
+
+const offerEndInput = document.createElement("input");
+offerEndInput.type = "datetime-local";
+offerEndInput.value = service.special_end
+    ? new Date(
+        new Date(service.special_end).getTime()
+        - new Date().getTimezoneOffset() * 60000
+      ).toISOString().slice(0, 16)
+    : "";
+row.appendChild(offerEndInput);
+
+const saveOfferButton = document.createElement("button");
+saveOfferButton.type = "button";
+saveOfferButton.textContent = "Save Special Offer";
+row.appendChild(saveOfferButton);
+
+const clearOfferButton = document.createElement("button");
+clearOfferButton.type = "button";
+clearOfferButton.textContent = "Remove Special Offer";
+clearOfferButton.className = "secondary";
+row.appendChild(clearOfferButton);
+
     // Find photos belonging to this service.
     const servicePhotos = (photoRows || []).filter(
         function (photo) {
