@@ -1856,61 +1856,108 @@ async function loadBookings() {
 ===================================== */
 
 async function loadFoodOrders() {
-    if (!currentBiz) return;
+if (!currentBiz) return;
 
-    const { data, error } = await supa
-        .from("bookza_orders")
-        .select(
-            "id, customer_name, customer_phone, order_type, booking_date, booking_time, total_amount, status, created_at"
-        )
-        .eq("business_id", currentBiz.id)
-        .eq("order_type", "food")
-        .order("created_at", { ascending: false })
-        .limit(50);
+const { data, error } = await supa
+    .from("bookza_orders")
+    .select(
+        "id, customer_name, customer_phone, order_type, booking_date, booking_time, total_amount, status, created_at"
+    )
+    .eq("business_id", currentBiz.id)
+    .eq("order_type", "food")
+    .order("created_at", { ascending: false })
+    .limit(50);
 
-    if (error) {
-        el("ordersList").textContent =
-            "Could not load food orders: " + error.message;
-        return;
+if (error) {
+    el("ordersList").textContent =
+        "Could not load food orders: " + error.message;
+    return;
+}
+
+const ordersList = el("ordersList");
+ordersList.textContent = "";
+
+if (!data || data.length === 0) {
+    ordersList.textContent = "No food orders found.";
+    return;
+}
+
+for (const order of data) {
+    const row = document.createElement("div");
+    row.className = "order-row";
+
+    const customer = document.createElement("strong");
+    customer.textContent =
+        order.customer_name || "Customer";
+
+    const phone = document.createElement("p");
+    phone.textContent =
+        "Phone: " + (order.customer_phone || "Not provided");
+
+    const itemsHeading = document.createElement("p");
+    itemsHeading.textContent = "ORDER ITEMS";
+    itemsHeading.style.fontWeight = "bold";
+
+    const itemsList = document.createElement("div");
+    itemsList.style.marginBottom = "12px";
+
+    const { data: items, error: itemsError } = await supa
+        .from("bookza_order_items")
+        .select("item_name, quantity, unit_price, subtotal")
+        .eq("order_id", order.id)
+        .order("item_name", { ascending: true });
+
+    if (itemsError) {
+        const itemError = document.createElement("p");
+        itemError.textContent =
+            "Could not load order items: " + itemsError.message;
+        itemsList.appendChild(itemError);
+    } else if (!items || items.length === 0) {
+        const noItems = document.createElement("p");
+        noItems.textContent = "No item details found.";
+        itemsList.appendChild(noItems);
+    } else {
+        items.forEach(function (item) {
+            const itemRow = document.createElement("p");
+
+            itemRow.textContent =
+                (item.item_name || "Item") +
+                " × " + item.quantity +
+                " — R" + item.unit_price +
+                " (Subtotal: R" + item.subtotal + ")";
+
+            itemsList.appendChild(itemRow);
+        });
     }
 
-    el("ordersList").textContent = "";
+    const total = document.createElement("p");
+    total.textContent =
+        "Order total: R" + order.total_amount;
+    total.style.fontWeight = "bold";
 
-    if (!data || data.length === 0) {
-        el("ordersList").textContent =
-            "No food orders found.";
-        return;
-    }
+    const time = document.createElement("p");
+    time.textContent =
+        "Requested: " +
+        (order.booking_date || "") + " " +
+        (order.booking_time || "");
 
-    data.forEach(function (order) {
-        const row = document.createElement("div");
-        row.className = "order-row";
+    const status = document.createElement("p");
+    status.textContent =
+        "Status: " + (order.status || "pending");
 
-        const customer = document.createElement("strong");
-        customer.textContent =
-            order.customer_name || "Customer";
+    row.append(
+        customer,
+        phone,
+        itemsHeading,
+        itemsList,
+        total,
+        time,
+        status
+    );
 
-        const phone = document.createElement("p");
-        phone.textContent =
-            "Phone: " + (order.customer_phone || "Not provided");
+    ordersList.appendChild(row);
+}
 
-        const total = document.createElement("p");
-        total.textContent =
-            "Order total: R" + order.total_amount;
-
-        const time = document.createElement("p");
-        time.textContent =
-            "Requested: " +
-            (order.booking_date || "") + " " +
-            (order.booking_time || "");
-
-        const status = document.createElement("p");
-        status.textContent =
-            "Status: " + (order.status || "pending");
-
-        row.append(customer, phone, total, time, status);
-        el("ordersList").appendChild(row);
-    });
 }
 
 
