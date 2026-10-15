@@ -148,5 +148,152 @@
 </p>
 
   </main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+  const BOOKZA_SUPABASE_URL =
+    "https://zyalhfwubhfsomaiomng.supabase.co";
+
+  const BOOKZA_SUPABASE_KEY =
+    "sb_publishable_oBiPfsgpmfTlZRGf5dsGQw_2SjntU7v";
+
+  const bookzaClient = window.supabase.createClient(
+    BOOKZA_SUPABASE_URL,
+    BOOKZA_SUPABASE_KEY
+  );
+
+  const trackForm = document.getElementById("trackForm");
+  const referenceInput = document.getElementById("orderReference");
+  const trackButton = document.getElementById("trackButton");
+  const refreshButton = document.getElementById("refreshButton");
+  const message = document.getElementById("message");
+  const result = document.getElementById("result");
+
+  let lastReference = "";
+
+  function money(amount) {
+    return "R" + Number(amount).toFixed(2);
+  }
+
+  function showMessage(text, isError) {
+    message.textContent = text;
+    message.style.color = isError ? "#b00020" : "#555";
+  }
+
+  function displayOrder(order) {
+    document.getElementById("businessName").textContent =
+      order.business_name.trim();
+
+    document.getElementById("orderStatus").textContent =
+      order.status || "Unknown";
+
+    const itemsContainer = document.getElementById("orderItems");
+    itemsContainer.replaceChildren();
+
+    (order.items || []).forEach(function (item) {
+      const row = document.createElement("div");
+      row.className = "item";
+
+      const name = document.createElement("p");
+      name.textContent =
+        item.name + " × " + item.quantity;
+
+      const price = document.createElement("p");
+      price.textContent =
+        money(item.unit_price) +
+        " each — Subtotal: " +
+        money(item.subtotal);
+
+      row.append(name, price);
+      itemsContainer.appendChild(row);
+    });
+
+    document.getElementById("orderTotal").textContent =
+      "Total: " + money(order.total);
+
+    const scheduleLabel =
+      order.order_type === "food"
+        ? "Collection"
+        : "Requested appointment";
+
+    document.getElementById("orderSchedule").textContent =
+      scheduleLabel + " date: " + order.date +
+      " · Time: " + order.time;
+
+    result.hidden = false;
+  }
+
+  async function trackOrder(reference) {
+    const cleanReference = reference.trim();
+
+    const uuidPattern =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+    if (!uuidPattern.test(cleanReference)) {
+      result.hidden = true;
+      showMessage(
+        "Please enter a valid order reference number.",
+        true
+      );
+      return;
+    }
+
+    trackButton.disabled = true;
+    refreshButton.disabled = true;
+    showMessage("Checking your order...", false);
+
+    try {
+      const { data, error } = await bookzaClient.rpc(
+        "bookza_track_order",
+        {
+          p_order_reference: cleanReference
+        }
+      );
+
+      if (error) {
+        console.error("BookZA tracking error:", error);
+        throw new Error(
+          "We couldn't check your order right now. Please try again."
+        );
+      }
+
+      if (!data) {
+        result.hidden = true;
+        showMessage(
+          "We couldn't find an order with that reference. Please check it and try again.",
+          true
+        );
+        return;
+      }
+
+      displayOrder(data);
+      lastReference = cleanReference;
+      referenceInput.value = cleanReference;
+
+      showMessage(
+        "Order found. Your status is shown below.",
+        false
+      );
+    } catch (error) {
+      result.hidden = true;
+      showMessage(error.message, true);
+    } finally {
+      trackButton.disabled = false;
+      refreshButton.disabled = false;
+    }
+  }
+
+  trackForm.addEventListener("submit", function (event) {
+    event.preventDefault();
+    trackOrder(referenceInput.value);
+  });
+
+  refreshButton.addEventListener("click", function () {
+    if (lastReference) {
+      trackOrder(lastReference);
+    }
+  });
+</script>
 </body>
 </html>
